@@ -1,0 +1,6 @@
+{
+  "name": "Movie and TV Streaming Client",
+  "description": "A high-fidelity Netflix-style streaming web client powered by TMDB featuring trending catalogs, detailed media parameters, episodes browsing, and integrated playbacks.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
