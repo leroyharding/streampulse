@@ -541,12 +541,59 @@
             <a href="#" class="hover:underline hover:text-white transition-colors">Contact Us</a>
           </div>
           <div class="text-xs font-bold bg-zinc-800/80 text-zinc-300 border border-zinc-700/50 rounded-full px-3 py-1.5 backdrop-blur-sm select-none">
-            v1.0.0
+            v<span id="footer-version">1.0.0</span>
           </div>
         </div>
       </footer>
 
     </main>
+
+    <!-- APP UPDATE MODAL -->
+    <div id="update-modal" class="fixed inset-0 z-[150] overflow-y-auto hidden opacity-0 transition-opacity duration-300 bg-black/80 flex justify-center items-center p-4">
+      <div class="glass-modal w-full max-w-md rounded-2xl overflow-hidden shadow-2xl border border-zinc-800 p-6 text-center transform scale-95 transition-transform duration-300">
+        <!-- Icon -->
+        <div class="w-16 h-16 rounded-full bg-blue-600/10 border border-blue-500/30 flex items-center justify-center mx-auto mb-4 text-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.2)]">
+          <i data-lucide="download-cloud" class="w-8 h-8"></i>
+        </div>
+        
+        <!-- Header -->
+        <h3 class="text-xl font-extrabold text-white tracking-tight mb-1">New Update Available!</h3>
+        <p class="text-xs text-zinc-400 mb-4">A fresh version of StreamPulse is ready to install.</p>
+        
+        <!-- Versions Info -->
+        <div class="flex items-center justify-center gap-4 bg-zinc-900/60 rounded-xl p-3 border border-zinc-800/80 mb-4 text-sm font-semibold">
+          <div class="text-zinc-500">
+            <div class="text-[10px] uppercase tracking-wider font-bold">Current</div>
+            <span id="update-current-version">v1.0.0</span>
+          </div>
+          <div class="text-zinc-400">
+            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </div>
+          <div class="text-emerald-400">
+            <div class="text-[10px] uppercase tracking-wider font-bold">Latest</div>
+            <span id="update-latest-version">v1.0.1</span>
+          </div>
+        </div>
+        
+        <!-- Changelog Box -->
+        <div class="text-left bg-zinc-950/80 rounded-xl p-4 border border-zinc-900 mb-6 max-h-40 overflow-y-auto">
+          <h4 class="text-xs font-bold text-zinc-300 uppercase tracking-wider mb-2">What's New:</h4>
+          <p id="update-changelog-text" class="text-xs text-zinc-400 leading-relaxed whitespace-pre-line">
+            Bug fixes and performance improvements.
+          </p>
+        </div>
+        
+        <!-- Buttons -->
+        <div class="flex flex-col gap-2">
+          <button id="update-download-btn" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-900/20 text-sm transition-all transform hover:scale-[1.02] cursor-pointer flex items-center justify-center gap-2">
+            <i data-lucide="download" class="w-4 h-4"></i> Download & Install
+          </button>
+          <button onclick="closeUpdateModal()" class="w-full bg-zinc-800/80 hover:bg-zinc-700 text-zinc-400 hover:text-white font-semibold py-3 rounded-xl border border-zinc-700/50 text-sm transition-all cursor-pointer">
+            Later
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- SLIDE-OVER / DETAILED GLASS-MORPHISM MODAL -->
     <div id="detail-modal" class="fixed inset-0 z-50 overflow-y-auto hidden opacity-0 transition-opacity duration-300 bg-black/75 flex justify-center items-start pt-10 pb-10 px-4">
@@ -736,6 +783,7 @@
       // TMDB configurations
       const TMDB_API_KEY = '8711e2c6b0504a3277a840e1dde5ed86';
       const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+      const APP_VERSION = '1.0.0';
       
       // Curated Collections list from collections_prompt.json
       const HYDRA_COLLECTIONS = [
@@ -820,6 +868,12 @@
 
       // INIT APP ON LOAD
       window.addEventListener('DOMContentLoaded', () => {
+        // Set version text in footer
+        const versionEl = document.getElementById('footer-version');
+        if (versionEl) {
+          versionEl.innerText = APP_VERSION;
+        }
+
         // Run first initialization processes
         lucide.createIcons();
         initHeaderScrollWatcher();
@@ -844,7 +898,72 @@
 
         // Run hash router to support deep linking on page reload
         handleRouting();
+
+        // Check for updates
+        setTimeout(checkForUpdates, 3000);
       });
+
+      // APP UPDATE CONTROLLER
+      async function checkForUpdates() {
+        const updateUrl = 'https://raw.githubusercontent.com/leroyharding/streampulse/main/update.json';
+        try {
+          const response = await fetch(updateUrl);
+          if (!response.ok) return;
+          const data = await response.json();
+          if (data && data.version) {
+            if (isNewerVersion(data.version, APP_VERSION)) {
+              showUpdateModal(data);
+            }
+          }
+        } catch (e) {
+          console.warn("Could not check for app updates:", e);
+        }
+      }
+
+      function isNewerVersion(latest, current) {
+        const parse = (v) => v.replace(/^v/, '').split('.').map(Number);
+        const [latMajor, latMinor, latPatch] = parse(latest);
+        const [curMajor, curMinor, curPatch] = parse(current);
+
+        if (latMajor !== curMajor) return latMajor > curMajor;
+        if (latMinor !== curMinor) return latMinor > curMinor;
+        return latPatch > curPatch;
+      }
+
+      function showUpdateModal(updateInfo) {
+        const modal = document.getElementById('update-modal');
+        if (!modal) return;
+        
+        document.getElementById('update-current-version').innerText = 'v' + APP_VERSION;
+        document.getElementById('update-latest-version').innerText = 'v' + updateInfo.version;
+        document.getElementById('update-changelog-text').innerText = updateInfo.changelog || 'Bug fixes and performance improvements.';
+        
+        const downloadBtn = document.getElementById('update-download-btn');
+        downloadBtn.onclick = () => {
+          if (updateInfo.url) {
+            window.open(updateInfo.url, '_system');
+          }
+        };
+
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+          modal.classList.remove('opacity-0');
+          modal.querySelector('.glass-modal').classList.remove('scale-95');
+        }, 50);
+
+        lucide.createIcons();
+      }
+
+      function closeUpdateModal() {
+        const modal = document.getElementById('update-modal');
+        if (!modal) return;
+        
+        modal.classList.add('opacity-0');
+        modal.querySelector('.glass-modal').classList.add('scale-95');
+        setTimeout(() => {
+          modal.classList.add('hidden');
+        }, 300);
+      }
 
       // API CORE GRAB WITH CACHE CAPABILITIES
       async function tmdbFetch(endpoint, params = {}) {
