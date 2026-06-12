@@ -668,7 +668,7 @@
                 <input 
                   type="text" 
                   id="iptv-xtream-server" 
-                  placeholder="http://freqdns.com" 
+                  placeholder="https://freqdns.com" 
                   class="w-full bg-zinc-950/80 border border-zinc-800 hover:border-zinc-700 focus:border-red-600 focus:outline-none focus:ring-1 focus:ring-red-600 text-white rounded-lg px-4 py-2.5 text-sm transition-all"
                 />
               </div>
@@ -1302,17 +1302,17 @@
       // In-Memory API responses cache
       const apiCache = {};
 
-      // Legacy localStorage migration for https://freqdns.com to http://freqdns.com and output=ts to type=m3u
+      // Legacy localStorage migration for http://freqdns.com to https://freqdns.com and output=ts to type=m3u
       (function() {
         try {
-          if (localStorage.getItem('streampulse_xtream_server') === 'https://freqdns.com') {
-            localStorage.setItem('streampulse_xtream_server', 'http://freqdns.com');
+          if (localStorage.getItem('streampulse_xtream_server') === 'http://freqdns.com') {
+            localStorage.setItem('streampulse_xtream_server', 'https://freqdns.com');
           }
           const customUrl = localStorage.getItem('streampulse_custom_iptv_url');
           if (customUrl) {
             let updated = customUrl;
-            if (updated.includes('https://freqdns.com')) {
-              updated = updated.replace('https://freqdns.com', 'http://freqdns.com');
+            if (updated.includes('http://freqdns.com')) {
+              updated = updated.replace('http://freqdns.com', 'https://freqdns.com');
             }
             if (updated.includes('&output=ts') && !updated.includes('&type=')) {
               updated = updated.replace('&output=ts', '&type=m3u');
@@ -1342,7 +1342,7 @@
         customIptvUrl: localStorage.getItem('streampulse_custom_iptv_url') || 
                        (localStorage.getItem('streampulse_xtream_server')
                          ? `${localStorage.getItem('streampulse_xtream_server').replace(/\/$/, '')}/get.php?username=${encodeURIComponent(localStorage.getItem('streampulse_xtream_user'))}&password=${encodeURIComponent(localStorage.getItem('streampulse_xtream_pass'))}&type=m3u`
-                         : 'http://freqdns.com/get.php?username=leroyharding%40gmail.com&password=hp82XEh&type=m3u'),
+                         : 'https://freqdns.com/get.php?username=leroyharding%40gmail.com&password=hp82XEh&type=m3u'),
         activeIptvChannels: [],
         iptvCategories: [],
         selectedIptvCategory: 'All',
@@ -1351,7 +1351,7 @@
         iptvPageSize: 100,
         
         // Xtream Codes IPTV States
-        xtreamServer: localStorage.getItem('streampulse_xtream_server') || 'http://freqdns.com',
+        xtreamServer: localStorage.getItem('streampulse_xtream_server') || 'https://freqdns.com',
         xtreamUser: localStorage.getItem('streampulse_xtream_user') || 'leroyharding@gmail.com',
         xtreamPass: localStorage.getItem('streampulse_xtream_pass') || 'hp82XEh',
         
@@ -1448,14 +1448,14 @@
 
         // Initialize default Xtream Codes credentials if not set
         if (!localStorage.getItem('streampulse_xtream_server')) {
-          localStorage.setItem('streampulse_xtream_server', 'http://freqdns.com');
+          localStorage.setItem('streampulse_xtream_server', 'https://freqdns.com');
           localStorage.setItem('streampulse_xtream_user', 'leroyharding@gmail.com');
           localStorage.setItem('streampulse_xtream_pass', 'hp82XEh');
           
-          const generatedUrl = `http://freqdns.com/get.php?username=leroyharding%40gmail.com&password=hp82XEh&type=m3u`;
+          const generatedUrl = `https://freqdns.com/get.php?username=leroyharding%40gmail.com&password=hp82XEh&type=m3u`;
           localStorage.setItem('streampulse_custom_iptv_url', generatedUrl);
           State.customIptvUrl = generatedUrl;
-          State.xtreamServer = 'http://freqdns.com';
+          State.xtreamServer = 'https://freqdns.com';
           State.xtreamUser = 'leroyharding@gmail.com';
           State.xtreamPass = 'hp82XEh';
         }
@@ -3905,7 +3905,7 @@ https://isg-sky-england.secure.footprint.net/hls/live/201202/skynews/master.m3u8
             State.iptvCategories = Array.from(categoryNames);
           } else {
             // Xtream Codes API loading via JSON (much faster & preserves actual categories/logos)
-            const xServer = State.xtreamServer || 'http://freqdns.com';
+            const xServer = State.xtreamServer || 'https://freqdns.com';
             const xUser = State.xtreamUser || 'leroyharding@gmail.com';
             const xPass = State.xtreamPass || 'hp82XEh';
             
@@ -4202,10 +4202,14 @@ https://isg-sky-england.secure.footprint.net/hls/live/201202/skynews/master.m3u8
 
         let cleanServer = server;
         if (cleanServer.includes('freqdns.com')) {
-          cleanServer = cleanServer.replace(/^https:/i, 'http:');
+          cleanServer = cleanServer.replace(/^http:/i, 'https:');
         }
         if (!cleanServer.startsWith('http')) {
-          cleanServer = 'http://' + cleanServer;
+          if (cleanServer.includes('freqdns.com')) {
+            cleanServer = 'https://' + cleanServer;
+          } else {
+            cleanServer = 'http://' + cleanServer;
+          }
         }
         if (cleanServer.endsWith('/')) {
           cleanServer = cleanServer.slice(0, -1);
@@ -4248,10 +4252,14 @@ https://isg-sky-england.secure.footprint.net/hls/live/201202/skynews/master.m3u8
       async function verifyXtreamLogin(server, user, pass) {
         let cleanServer = server.trim();
         if (cleanServer.includes('freqdns.com')) {
-          cleanServer = cleanServer.replace(/^https:/i, 'http:');
+          cleanServer = cleanServer.replace(/^http:/i, 'https:');
         }
         if (!cleanServer.startsWith('http')) {
-          cleanServer = 'http://' + cleanServer;
+          if (cleanServer.includes('freqdns.com')) {
+            cleanServer = 'https://' + cleanServer;
+          } else {
+            cleanServer = 'http://' + cleanServer;
+          }
         }
         if (cleanServer.endsWith('/')) {
           cleanServer = cleanServer.slice(0, -1);
@@ -4309,8 +4317,16 @@ https://isg-sky-england.secure.footprint.net/hls/live/201202/skynews/master.m3u8
             statusDiv.innerText = msg;
 
             let cleanServer = server;
-            if (cleanServer.includes('freqdns.com')) cleanServer = cleanServer.replace(/^https:/i, 'http:');
-            if (!cleanServer.startsWith('http')) cleanServer = 'http://' + cleanServer;
+            if (cleanServer.includes('freqdns.com')) {
+              cleanServer = cleanServer.replace(/^http:/i, 'https:');
+            }
+            if (!cleanServer.startsWith('http')) {
+              if (cleanServer.includes('freqdns.com')) {
+                cleanServer = 'https://' + cleanServer;
+              } else {
+                cleanServer = 'http://' + cleanServer;
+              }
+            }
             if (cleanServer.endsWith('/')) cleanServer = cleanServer.slice(0, -1);
 
             State.xtreamServer = cleanServer;
