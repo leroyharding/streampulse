@@ -29,6 +29,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- HLS Player Library for IPTV & Direct HLS Streams -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
       /* Smooth transitions and custom scrolls */
       html {
@@ -149,6 +151,10 @@
           <button onclick="changeSection('tv')" id="nav-tv" class="text-zinc-400 hover:text-white transition-colors duration-200">TV Shows</button>
           <button onclick="changeSection('collections')" id="nav-collections" class="text-zinc-400 hover:text-white transition-colors duration-200">Collections</button>
           <button onclick="changeSection('mylist')" id="nav-mylist" class="text-zinc-400 hover:text-white transition-colors duration-200">My List</button>
+          <button onclick="changeSection('iptv')" id="nav-iptv" class="text-zinc-400 hover:text-white transition-colors duration-200">Live TV</button>
+          <button onclick="changeSection('settings')" id="nav-settings" class="text-zinc-400 hover:text-white transition-colors duration-200 flex items-center gap-1">
+            <i data-lucide="settings" class="w-4 h-4"></i> Settings
+          </button>
         </nav>
       </div>
 
@@ -196,6 +202,10 @@
       <button onclick="changeSection('tv'); toggleMobileMenu()" class="text-left py-2 border-b border-zinc-800 text-zinc-400 hover:text-netflixRed">TV Shows</button>
       <button onclick="changeSection('collections'); toggleMobileMenu()" class="text-left py-2 border-b border-zinc-800 text-zinc-400 hover:text-netflixRed">Collections</button>
       <button onclick="changeSection('mylist'); toggleMobileMenu()" class="text-left py-2 border-b border-zinc-800 text-zinc-400 hover:text-netflixRed">My List</button>
+      <button onclick="changeSection('iptv'); toggleMobileMenu()" class="text-left py-2 border-b border-zinc-800 text-zinc-400 hover:text-netflixRed">Live TV</button>
+      <button onclick="changeSection('settings'); toggleMobileMenu()" class="text-left py-2 border-b border-zinc-800 text-zinc-400 hover:text-netflixRed flex items-center gap-2">
+        <i data-lucide="settings" class="w-5 h-5"></i> Settings
+      </button>
     </div>
 
     <!-- MAIN DASHBOARD CONTENT -->
@@ -551,6 +561,365 @@
         </div>
       </section>
 
+      <!-- IPTV LIVE TV SECTION -->
+      <section id="iptv-section" class="hidden container mx-auto px-4 md:px-12 pt-28">
+        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
+          <div>
+            <h1 class="text-3xl md:text-5xl font-extrabold tracking-widest text-white uppercase italic">
+              LIVE <span class="text-netflixRed">STREAM TV</span>
+            </h1>
+            <p class="text-xs md:text-sm text-zinc-400 mt-2 tracking-widest uppercase">Free-to-air public television & live web streams</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            <!-- Search IPTV Channels -->
+            <div class="relative flex-1 md:flex-none">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none">
+                <i data-lucide="search" class="w-4 h-4"></i>
+              </span>
+              <input 
+                type="search" 
+                id="iptv-search-input" 
+                placeholder="Search channels..." 
+                class="bg-zinc-900/60 border border-zinc-800 hover:border-zinc-700 text-zinc-100 px-4 py-2 pl-9 rounded-lg focus:outline-none focus:ring-2 focus:ring-netflixRed focus:border-transparent text-xs w-full md:w-48 transition-all"
+                oninput="handleIptvSearch(event)"
+              />
+            </div>
+            <!-- Custom Playlist URL Loader -->
+            <button onclick="toggleCustomM3UModal(true)" class="bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-white px-4 py-2.5 rounded-lg border border-zinc-700 transition-colors cursor-pointer select-none flex items-center gap-2">
+              <i data-lucide="server" class="w-4 h-4 text-netflixRed"></i> Configure IPTV
+            </button>
+          </div>
+        </div>
+
+        <div class="flex flex-col lg:flex-row gap-6">
+          <!-- IPTV Categories Sidebar -->
+          <div class="w-full lg:w-64 shrink-0 flex lg:flex-col gap-2 overflow-x-auto lg:overflow-x-visible no-scrollbar pb-3 lg:pb-0 border-b lg:border-b-0 lg:border-r border-zinc-800 pr-0 lg:pr-6" id="iptv-categories">
+            <!-- Dynamic Category Buttons -->
+          </div>
+
+          <!-- IPTV Channels Grid -->
+          <div class="flex-1 min-h-[400px]">
+            <div id="iptv-channels-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              <!-- Channels loaded dynamically -->
+            </div>
+            <!-- Load More Channels Container -->
+            <div id="iptv-load-more-container" class="hidden py-8 text-center">
+              <button id="iptv-load-more-btn" onclick="loadMoreIptvChannels()" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white font-bold py-2.5 px-6 rounded-lg border border-zinc-700 transition-colors cursor-pointer select-none text-xs">
+                Load More Channels
+              </button>
+            </div>
+            <!-- Loader feedback -->
+            <div id="iptv-loader" class="hidden py-24 flex flex-col justify-center items-center gap-3">
+              <div class="w-10 h-10 rounded-full border-4 border-t-netflixRed border-white/10 animate-spin"></div>
+              <span class="text-sm font-semibold text-zinc-400" id="iptv-loader-text">Loading channels...</span>
+            </div>
+            <!-- Empty state -->
+            <div id="iptv-empty-state" class="hidden py-24 text-center">
+              <div class="w-16 h-16 rounded-full bg-zinc-800 flex items-center justify-center mx-auto mb-4 text-zinc-500">
+                <i data-lucide="tv" class="w-8 h-8"></i>
+              </div>
+              <h3 class="text-lg font-bold text-zinc-300">No Channels Found</h3>
+              <p class="text-sm text-zinc-500 max-w-sm mx-auto mt-2">No active live TV channels match your search query or selected category.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- IPTV LOAD CUSTOM PLAYLIST MODAL -->
+      <div id="iptv-m3u-modal" class="fixed inset-0 z-[150] overflow-y-auto hidden opacity-0 transition-opacity duration-300 bg-black/85 flex justify-center items-center p-4">
+        <div class="glass-modal w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl border border-zinc-800 p-6 transform scale-95 transition-transform duration-300">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-extrabold text-white">Load Live TV Channel Lineup</h3>
+            <button onclick="toggleCustomM3UModal(false)" class="text-zinc-400 hover:text-white transition-colors cursor-pointer">
+              <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+          </div>
+          
+          <!-- Mode Toggle Tabs inside Modal -->
+          <div class="flex bg-zinc-950 p-1 rounded-xl mb-6">
+            <button id="iptv-mode-m3u-btn" onclick="toggleIptvModalMode('m3u')" class="flex-1 text-center py-2 text-xs font-bold rounded-lg bg-netflixRed text-white transition-all cursor-pointer">
+              M3U Playlist URL
+            </button>
+            <button id="iptv-mode-xtream-btn" onclick="toggleIptvModalMode('xtream')" class="flex-1 text-center py-2 text-xs font-bold rounded-lg text-zinc-400 hover:text-white transition-all cursor-pointer">
+              Xtream Codes API
+            </button>
+          </div>
+
+          <!-- M3U Form View -->
+          <div id="iptv-form-m3u" class="space-y-4 mb-6 text-left">
+            <p class="text-xs text-zinc-400 leading-relaxed">Paste an IPTV playlist M3U URL below to load your custom channel lineup.</p>
+            <div>
+              <label for="iptv-m3u-input" class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Playlist M3U URL</label>
+              <input 
+                type="text" 
+                id="iptv-m3u-input" 
+                placeholder="https://example.com/playlist.m3u" 
+                class="w-full bg-zinc-950/80 border border-zinc-800 hover:border-zinc-700 focus:border-red-600 focus:outline-none focus:ring-1 focus:ring-red-600 text-white rounded-lg px-4 py-3 text-sm transition-all"
+              />
+            </div>
+          </div>
+
+          <!-- Xtream Codes Form View -->
+          <div id="iptv-form-xtream" class="space-y-4 mb-6 text-left hidden">
+            <p class="text-xs text-zinc-400 leading-relaxed">Enter your Xtream Codes API URL, username, and password credentials.</p>
+            <div class="space-y-3">
+              <div>
+                <label for="iptv-xtream-server" class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Server Address</label>
+                <input 
+                  type="text" 
+                  id="iptv-xtream-server" 
+                  placeholder="http://freqdns.com" 
+                  class="w-full bg-zinc-950/80 border border-zinc-800 hover:border-zinc-700 focus:border-red-600 focus:outline-none focus:ring-1 focus:ring-red-600 text-white rounded-lg px-4 py-2.5 text-sm transition-all"
+                />
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label for="iptv-xtream-user" class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Username</label>
+                  <input 
+                    type="text" 
+                    id="iptv-xtream-user" 
+                    placeholder="leroyharding@gmail.com" 
+                    class="w-full bg-zinc-950/80 border border-zinc-800 hover:border-zinc-700 focus:border-red-600 focus:outline-none focus:ring-1 focus:ring-red-600 text-white rounded-lg px-4 py-2.5 text-sm transition-all"
+                  />
+                </div>
+                <div>
+                  <label for="iptv-xtream-pass" class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Password</label>
+                  <input 
+                    type="password" 
+                    id="iptv-xtream-pass" 
+                    placeholder="hp82XEh" 
+                    class="w-full bg-zinc-950/80 border border-zinc-800 hover:border-zinc-700 focus:border-red-600 focus:outline-none focus:ring-1 focus:ring-red-600 text-white rounded-lg px-4 py-2.5 text-sm transition-all"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex gap-3">
+            <button id="iptv-load-playlist-btn" onclick="executeIptvModalLoad()" class="flex-1 bg-netflixRed hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 text-sm shadow-md">
+              <i data-lucide="download" class="w-4 h-4"></i> Load & Parse Playlist
+            </button>
+            <button onclick="resetIptvDefaultPlaylist()" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold px-4 py-3 rounded-xl border border-zinc-700/60 transition-all cursor-pointer text-sm">
+              Reset Default
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SETTINGS SYSTEM SECTION -->
+      <section id="settings-section" class="hidden container mx-auto px-4 md:px-12 pt-28">
+        <div class="mb-8">
+          <h1 class="text-3xl md:text-5xl font-extrabold tracking-widest text-white uppercase italic">
+            APP <span class="text-netflixRed">SETTINGS</span>
+          </h1>
+          <p class="text-xs md:text-sm text-zinc-400 mt-2 tracking-widest uppercase">Configure scraper credentials, streaming options, and custom playlists</p>
+        </div>
+
+        <div class="max-w-3xl bg-zinc-900/30 border border-zinc-800/80 rounded-2xl p-6 md:p-8 backdrop-blur-sm shadow-xl space-y-8">
+          <!-- Real-Debrid Premium Integration -->
+          <div>
+            <h3 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
+              <i data-lucide="key" class="w-5 h-5 text-netflixRed"></i>
+              Real-Debrid Premium Account
+            </h3>
+            <p class="text-xs text-zinc-400 mb-4 leading-relaxed">
+              Authenticate via Real-Debrid API Token or Device Pairing to access instant premium HLS direct stream links. Your credentials are saved locally in your browser cache.
+            </p>
+            
+            <div class="space-y-4">
+              <!-- Manual Static API token entry -->
+              <div>
+                <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Static API Token (Recommended)</label>
+                <div class="flex flex-col sm:flex-row gap-3">
+                  <div class="flex-1 relative">
+                    <input 
+                      type="password" 
+                      id="settings-rd-token" 
+                      placeholder="Paste Real-Debrid API Token (from real-debrid.com/apitoken)" 
+                      class="w-full bg-zinc-950/80 border border-zinc-800 hover:border-zinc-700 focus:border-red-600 focus:outline-none focus:ring-1 focus:ring-red-600 text-white rounded-lg px-4 py-2.5 text-xs transition-all"
+                    />
+                    <button onclick="togglePasswordVisibility('settings-rd-token')" class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors">
+                      <i data-lucide="eye" class="w-4 h-4"></i>
+                    </button>
+                  </div>
+                  <button onclick="getRDTokenLink()" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold px-4 py-2.5 rounded-lg border border-zinc-700 text-xs transition-all shrink-0 cursor-pointer select-none">
+                    Get API Token Key
+                  </button>
+                </div>
+              </div>
+
+              <!-- Device pairing flow section -->
+              <div class="bg-zinc-950/40 p-4 border border-zinc-800/60 rounded-xl">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h4 class="text-xs font-bold text-zinc-200">Device OAuth Pairing</h4>
+                    <p class="text-[10px] text-zinc-500 mt-0.5" id="rd-oauth-status-text">No paired account detected.</p>
+                  </div>
+                  <button id="rd-pair-btn" onclick="startRDPairing()" class="bg-netflixRed hover:bg-red-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors cursor-pointer select-none">
+                    Pair My Device
+                  </button>
+                </div>
+                
+                <!-- Pairing Code display, hidden by default -->
+                <div id="rd-pairing-display" class="hidden mt-4 pt-4 border-t border-zinc-800/60 text-center">
+                  <p class="text-xs text-zinc-300 mb-2">Please go to <span class="text-netflixRed font-bold">https://real-debrid.com/device</span> and enter the code below:</p>
+                  <div class="text-3xl font-black text-white tracking-widest bg-zinc-950 py-3 rounded-lg border border-zinc-800 inline-block px-8 mb-2" id="rd-device-code-display">----</div>
+                  <p class="text-[10px] text-zinc-500" id="rd-polling-timer">Waiting for authorization (120s remaining)...</p>
+                </div>
+
+                <!-- User profile display, hidden by default -->
+                <div id="rd-user-profile" class="hidden mt-4 pt-4 border-t border-zinc-800/60 flex items-center justify-between gap-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                      <i data-lucide="user" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                      <h5 class="text-xs font-bold text-white" id="rd-user-name">RD User</h5>
+                      <p class="text-[10px] text-emerald-400 font-semibold" id="rd-user-subscription">Premium Account</p>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <p class="text-[10px] text-zinc-500">Expires</p>
+                    <p class="text-xs font-bold text-zinc-300" id="rd-user-expiration">--</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <hr class="border-zinc-800" />
+
+          <!-- Default Scraper Options -->
+          <div>
+            <h3 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
+              <i data-lucide="sliders" class="w-5 h-5 text-netflixRed"></i>
+              Default Streaming & Scraper Options
+            </h3>
+            <p class="text-xs text-zinc-400 mb-4 leading-relaxed">Choose your preferred default stream server and control how audio capabilities are flagged during link scraping.</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+              <div>
+                <label for="settings-default-provider" class="block text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">Default Server / Embed</label>
+                <select id="settings-default-provider" class="bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-white font-semibold py-2.5 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600 cursor-pointer w-full text-xs">
+                  <option value="vidlink">VidLink Pro</option>
+                  <option value="videasy">Videasy</option>
+                  <option value="vsembed">VsEmbed</option>
+                  <option value="xpass">Play XPass</option>
+                  <option value="playimdb">PlayIMDb</option>
+                </select>
+              </div>
+              <div>
+                <label for="settings-default-player" class="block text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">Default Player Engine</label>
+                <select id="settings-default-player" class="bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-white font-semibold py-2.5 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600 cursor-pointer w-full text-xs">
+                  <option value="internal">Web Browser Player (Hls.js)</option>
+                  <option value="vlc">VLC Player (External Android)</option>
+                  <option value="mx">MX Player (External Android)</option>
+                  <option value="just">Just Player (External Android)</option>
+                  <option value="system">System Chooser (External Android)</option>
+                </select>
+              </div>
+              <div class="flex items-center justify-between bg-zinc-950/40 p-4 border border-zinc-800/60 rounded-xl">
+                <div>
+                  <h4 class="text-xs font-bold text-zinc-200">Audio Codec Classifier Alert</h4>
+                  <p class="text-[10px] text-zinc-500 mt-0.5">Flags DTS/Atmos/AC3 audio streams that might be silent on web browsers.</p>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer select-none">
+                  <input type="checkbox" id="settings-audio-warning" class="sr-only peer" checked>
+                  <div class="w-11 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-zinc-400 after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-netflixRed peer-checked:after:bg-white"></div>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <hr class="border-zinc-800" />
+
+          <!-- IPTV Settings -->
+          <div>
+            <h3 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
+              <i data-lucide="tv" class="w-5 h-5 text-netflixRed"></i>
+              IPTV Live TV Configuration
+            </h3>
+            <p class="text-xs text-zinc-400 mb-4 leading-relaxed">Configure Live TV using either a direct Custom M3U URL or your Xtream Codes API login credentials.</p>
+            
+            <div class="space-y-4">
+              <!-- M3U URL Input -->
+              <div>
+                <label for="settings-iptv-url" class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Custom M3U Playlist URL</label>
+                <div class="relative">
+                  <input 
+                    type="text" 
+                    id="settings-iptv-url" 
+                    placeholder="No custom M3U playlist URL saved" 
+                    class="w-full bg-zinc-950/80 border border-zinc-800 hover:border-zinc-700 focus:border-red-600 focus:outline-none focus:ring-1 focus:ring-red-600 text-white rounded-lg px-4 py-2.5 text-xs transition-all pr-24"
+                  />
+                  <button onclick="clearCustomIPTVSetting()" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500 hover:text-netflixRed transition-colors font-bold select-none cursor-pointer">
+                    Clear M3U
+                  </button>
+                </div>
+              </div>
+
+              <!-- Xtream Codes Login -->
+              <div class="bg-zinc-950/40 p-4 border border-zinc-800/60 rounded-xl space-y-3">
+                <h4 class="text-xs font-bold text-zinc-200 flex items-center gap-1.5">
+                  <i data-lucide="server" class="w-3.5 h-3.5 text-netflixRed"></i> Xtream Codes API
+                </h4>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label for="settings-xtream-server" class="block text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Server URL</label>
+                    <input 
+                      type="text" 
+                      id="settings-xtream-server" 
+                      placeholder="http://example.com:8080" 
+                      class="w-full bg-zinc-950 border border-zinc-800 hover:border-zinc-700 focus:border-red-600 focus:outline-none focus:ring-1 focus:ring-red-600 text-white rounded-lg px-3 py-2 text-xs transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label for="settings-xtream-user" class="block text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Username</label>
+                    <input 
+                      type="text" 
+                      id="settings-xtream-user" 
+                      placeholder="username" 
+                      class="w-full bg-zinc-950 border border-zinc-800 hover:border-zinc-700 focus:border-red-600 focus:outline-none focus:ring-1 focus:ring-red-600 text-white rounded-lg px-3 py-2 text-xs transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label for="settings-xtream-pass" class="block text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Password</label>
+                    <input 
+                      type="password" 
+                      id="settings-xtream-pass" 
+                      placeholder="password" 
+                      class="w-full bg-zinc-950 border border-zinc-800 hover:border-zinc-700 focus:border-red-600 focus:outline-none focus:ring-1 focus:ring-red-600 text-white rounded-lg px-3 py-2 text-xs transition-all"
+                    />
+                  </div>
+                </div>
+                
+                <div class="flex items-center justify-between pt-1">
+                  <div id="xtream-login-status" class="text-[10px] text-zinc-500">
+                    <!-- Status will print here -->
+                  </div>
+                  <button type="button" onclick="verifyAndLoadXtream()" class="bg-netflixRed/15 hover:bg-netflixRed hover:text-white border border-red-600/30 text-netflixRed text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer">
+                    Verify Xtream Login
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <hr class="border-zinc-800" />
+
+          <!-- Actions -->
+          <div class="flex gap-4">
+            <button onclick="saveAppSettings()" id="save-settings-btn" class="flex-1 bg-netflixRed hover:bg-red-700 text-white font-bold py-3.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 text-sm shadow-md">
+              <i data-lucide="check" class="w-4 h-4"></i> Save All Settings
+            </button>
+            <button onclick="resetAppSettings()" id="clear-settings-btn" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold px-6 py-3.5 rounded-xl border border-zinc-700/60 transition-all cursor-pointer text-sm">
+              Reset Defaults
+            </button>
+          </div>
+        </div>
+      </section>
+
       <!-- FOOTER -->
       <footer class="border-t border-zinc-800 bg-[#141414] text-zinc-500 py-10 px-4 md:px-12 mt-16 text-center md:text-left">
         <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
@@ -669,15 +1038,18 @@
             </p>
 
             <!-- Buttons bar in modal -->
-            <div class="flex flex-wrap items-center gap-3">
-              <button id="detail-watch-btn" class="bg-netflixRed hover:bg-red-700 text-white font-bold px-6 py-3 rounded-lg flex items-center gap-2 transition-all transform hover:scale-[1.02] shadow-lg shadow-red-900/20 text-sm md:text-base pointer-events-auto cursor-pointer">
-                <i data-lucide="play" class="w-5 h-5 fill-white"></i> Play Stream
+            <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+              <button id="detail-watch-btn" class="bg-netflixRed hover:bg-red-700 text-white font-bold px-4 py-2 sm:px-6 sm:py-3 rounded-lg flex items-center gap-1.5 sm:gap-2 transition-all transform hover:scale-[1.02] shadow-lg shadow-red-900/20 text-xs sm:text-sm md:text-base pointer-events-auto cursor-pointer">
+                <i data-lucide="play" class="w-4 h-4 sm:w-5 sm:h-5 fill-white"></i> Play Stream
               </button>
-              <button id="detail-trailer-btn" class="hidden bg-zinc-800 hover:bg-zinc-700 text-white font-semibold px-4 py-3 rounded-lg flex items-center gap-2 transition-all border border-zinc-700 text-sm md:text-base cursor-pointer select-none">
-                <i data-lucide="video" class="w-5 h-5"></i> Trailer
+              <button id="detail-trailer-btn" class="hidden bg-zinc-800 hover:bg-zinc-700 text-white font-semibold px-3 py-2 sm:px-4 sm:py-3 rounded-lg flex items-center gap-1.5 sm:gap-2 transition-all border border-zinc-700 text-xs sm:text-sm md:text-base cursor-pointer select-none">
+                <i data-lucide="video" class="w-4 h-4 sm:w-5 sm:h-5"></i> Trailer
               </button>
-              <button id="detail-bookmark-btn" class="bg-zinc-800 hover:bg-zinc-700 text-white font-semibold px-4 py-3 rounded-lg flex items-center gap-2 transition-all border border-zinc-700 text-sm md:text-base cursor-pointer select-none">
-                <i data-lucide="plus" class="w-5 h-5"></i> Add to My List
+              <button id="detail-bookmark-btn" class="bg-zinc-800 hover:bg-zinc-700 text-white font-semibold px-3 py-2 sm:px-4 sm:py-3 rounded-lg flex items-center gap-1.5 sm:gap-2 transition-all border border-zinc-700 text-xs sm:text-sm md:text-base cursor-pointer select-none">
+                <i data-lucide="plus" class="w-4 h-4 sm:w-5 sm:h-5"></i> Add to My List
+              </button>
+              <button id="detail-scrape-btn" onclick="triggerDirectScrapeFromButton()" class="bg-zinc-800/80 hover:bg-zinc-700 text-white font-semibold px-3 py-2 sm:px-4 sm:py-3 rounded-lg flex items-center gap-1.5 sm:gap-2 transition-all border border-zinc-700 text-xs sm:text-sm md:text-base cursor-pointer select-none">
+                <i data-lucide="search" class="w-4 h-4 sm:w-5 sm:h-5 text-netflixRed animate-pulse"></i> Direct Streams
               </button>
             </div>
           </div>
@@ -685,24 +1057,80 @@
 
         <!-- CAST & SEASONS/EPISODES DOCK TABS -->
         <div class="px-6 md:p-8 pt-0 border-t border-zinc-800/85">
-          <div class="flex border-b border-zinc-800 mb-6 font-semibold text-sm">
-            <button id="tab-episodes-head" onclick="switchDetailTab('episodes')" class="py-4 px-1 border-b-2 border-netflixRed text-white flex items-center gap-2 hidden">
-              Episodes List
-            </button>
-            <button id="tab-cast-head" onclick="switchDetailTab('cast')" class="py-4 px-1 border-b-2 border-netflixRed text-white flex items-center gap-2">
-              Principal Cast
-            </button>
-            <button id="tab-recs-head" onclick="switchDetailTab('recs')" class="py-4 px-1 border-b-2 border-transparent text-zinc-400 hover:text-white flex items-center gap-2 ml-6">
-              Similar Titles
-            </button>
-          </div>
-
-          <!-- TAB CONTENT: CAST -->
-          <div id="tab-cast-content" class="pb-8">
-            <div id="detail-cast-list" class="flex gap-4 overflow-x-auto py-2 no-scrollbar">
-              <!-- Cast profiles dynamically loaded -->
+            <div class="flex border-b border-zinc-800 mb-6 font-semibold text-sm">
+              <button id="tab-episodes-head" onclick="switchDetailTab('episodes')" class="py-4 px-1 border-b-2 border-netflixRed text-white flex items-center gap-2 hidden">
+                Episodes List
+              </button>
+              <button id="tab-cast-head" onclick="switchDetailTab('cast')" class="py-4 px-1 border-b-2 border-netflixRed text-white flex items-center gap-2">
+                Principal Cast
+              </button>
+              <button id="tab-streams-head" onclick="switchDetailTab('streams')" class="py-4 px-1 border-b-2 border-transparent text-zinc-400 hover:text-white flex items-center gap-2 ml-6">
+                Direct Streams
+              </button>
+              <button id="tab-recs-head" onclick="switchDetailTab('recs')" class="py-4 px-1 border-b-2 border-transparent text-zinc-400 hover:text-white flex items-center gap-2 ml-6">
+                Similar Titles
+              </button>
             </div>
-          </div>
+
+            <!-- TAB CONTENT: CAST -->
+            <div id="tab-cast-content" class="pb-8">
+              <div id="detail-cast-list" class="flex gap-4 overflow-x-auto py-2 no-scrollbar">
+                <!-- Cast profiles dynamically loaded -->
+              </div>
+            </div>
+
+            <!-- TAB CONTENT: DIRECT STREAMS -->
+            <div id="tab-streams-content" class="pb-8 hidden">
+              <!-- Season & Episode selector for TV Series (Hidden for Movies) -->
+              <div id="streams-tv-selector" class="flex flex-wrap items-center gap-4 mb-6 hidden">
+                <div>
+                  <label for="streams-season-select" class="block text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Season</label>
+                  <div class="relative">
+                    <select id="streams-season-select" onchange="handleStreamsTVChange()" class="appearance-none bg-zinc-800 hover:bg-zinc-700 text-white font-semibold py-2 pl-4 pr-10 rounded-lg focus:outline-none focus:ring-2 focus:ring-netflixRed border border-zinc-700 cursor-pointer min-w-[120px] text-xs">
+                      <!-- Options populated dynamically -->
+                    </select>
+                    <span class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-zinc-400">
+                      <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <label for="streams-episode-select" class="block text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Episode</label>
+                  <div class="relative">
+                    <select id="streams-episode-select" onchange="handleStreamsTVChange()" class="appearance-none bg-zinc-800 hover:bg-zinc-700 text-white font-semibold py-2 pl-4 pr-10 rounded-lg focus:outline-none focus:ring-2 focus:ring-netflixRed border border-zinc-700 cursor-pointer min-w-[120px] text-xs">
+                      <!-- Options populated dynamically -->
+                    </select>
+                    <span class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-zinc-400">
+                      <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Scrape Loader / Info -->
+              <div id="streams-loader" class="hidden py-8 flex flex-col justify-center items-center gap-3">
+                <div class="w-8 h-8 rounded-full border-2 border-t-netflixRed border-white/10 animate-spin"></div>
+                <span class="text-sm font-semibold text-zinc-400">Scraping stream servers (Torrentio/NoTorrent/StreamViX/HdHub)...</span>
+              </div>
+
+              <!-- Scraper action button if not run -->
+              <div id="streams-start-container" class="py-8 text-center">
+                <p class="text-xs text-zinc-400 mb-4 font-semibold">Direct streams scrape third-party metadata feeds using IMDb IDs. Real-Debrid cache will resolve automatically if key is saved.</p>
+                <button onclick="startScrapeStreams()" id="scrape-streams-btn" class="bg-netflixRed hover:bg-red-700 text-sm font-bold text-white px-6 py-2.5 rounded-lg border border-transparent transition-all transform hover:scale-[1.02] cursor-pointer select-none flex items-center gap-2 mx-auto shadow-md">
+                  <i data-lucide="play" class="w-4 h-4 fill-white"></i> Find Direct Streaming Links
+                </button>
+              </div>
+
+              <!-- Streams list container -->
+              <div id="streams-list" class="space-y-3 max-h-[350px] overflow-y-auto pr-2 hidden">
+                <!-- Dynamically populated cards -->
+              </div>
+              
+              <div id="streams-error" class="hidden py-8 text-center text-zinc-500">
+                <i data-lucide="alert-circle" class="w-8 h-8 mx-auto text-amber-500 mb-2"></i>
+                <p class="text-sm font-semibold text-zinc-300" id="streams-error-msg">No direct stream links were found.</p>
+              </div>
+            </div>
 
           <!-- TAB CONTENT: EPISODES (EXPLICIT TV-SHOW FEATURES) -->
           <div id="tab-episodes-content" class="pb-8 hidden">
@@ -760,9 +1188,33 @@
           </div>
         </div>
         <div class="flex items-center gap-3">
-          <span class="text-xs bg-zinc-900/80 text-zinc-300 border border-zinc-700 rounded-lg px-2.5 py-1 hidden sm:inline-flex items-center gap-1.5 backdrop-blur-md">
-            <i data-lucide="info" class="w-3.5 h-3.5"></i> Stream hosted externally • Use esc key to exit
+          <!-- Server / Provider Dropdown Selector -->
+          <div id="player-provider-container" class="relative flex items-center">
+            <span class="absolute left-3 text-zinc-400 pointer-events-none text-xs flex items-center gap-1 font-bold">
+              <i data-lucide="server" class="w-3.5 h-3.5 text-netflixRed"></i> Server:
+            </span>
+            <select 
+              id="player-provider-select" 
+              onchange="changePlayerProvider(event)" 
+              class="bg-black/80 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900/85 text-white pl-20 pr-9 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-netflixRed focus:border-transparent text-xs font-bold transition-all backdrop-blur-md cursor-pointer select-none appearance-none min-w-[170px]"
+            >
+              <option value="vidlink">VidLink Pro</option>
+              <option value="videasy">Videasy</option>
+              <option value="vsembed">VsEmbed</option>
+              <option value="xpass">Play XPass</option>
+              <option value="playimdb">PlayIMDb</option>
+            </select>
+            <span class="absolute right-3 text-zinc-400 pointer-events-none">
+              <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+            </span>
+          </div>
+
+          <span class="text-xs bg-zinc-900/80 text-zinc-300 border border-zinc-700 rounded-lg px-2.5 py-2 hidden sm:inline-flex items-center gap-1.5 backdrop-blur-md">
+            <i data-lucide="info" class="w-3.5 h-3.5"></i> Use Esc to exit
           </span>
+          <button id="player-external-launch-btn" onclick="launchCurrentInExternalPlayer()" class="bg-zinc-900/60 hover:bg-white hover:text-black text-white rounded-lg px-3 py-2 transition-all border border-zinc-800 flex items-center gap-1.5 cursor-pointer text-xs font-bold hidden">
+            <i data-lucide="external-link" class="w-3.5 h-3.5 text-netflixRed"></i> External Player
+          </button>
           <button onclick="closeVideoPlayer()" class="bg-zinc-900/60 hover:bg-white hover:text-black text-white rounded-full p-2.5 transition-all border border-zinc-800 flex items-center justify-center cursor-pointer">
             <i data-lucide="x" class="w-5 h-5"></i>
           </button>
@@ -796,10 +1248,18 @@
         <iframe 
           id="player-iframe" 
           src="" 
-          class="w-full h-full border-none z-0 bg-black" 
+          class="w-full h-full border-none z-0 bg-black hidden" 
           allowfullscreen 
           allow="autoplay; encrypted-media; picture-in-picture"
         ></iframe>
+
+        <!-- HTML5 Video Player -->
+        <video 
+          id="player-video" 
+          controls 
+          autoplay 
+          class="w-full h-full z-0 bg-black hidden"
+        ></video>
       </div>
 
     </div>
@@ -809,7 +1269,7 @@
       // TMDB configurations
       const TMDB_API_KEY = '8711e2c6b0504a3277a840e1dde5ed86';
       const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
-      const APP_VERSION = '1.0.0';
+      const APP_VERSION = '1.0.1';
       
       // Curated Collections list from collections_prompt.json
       const HYDRA_COLLECTIONS = [
@@ -842,12 +1302,62 @@
       // In-Memory API responses cache
       const apiCache = {};
 
+      // Legacy localStorage migration for https://freqdns.com to http://freqdns.com and output=ts to type=m3u
+      (function() {
+        try {
+          if (localStorage.getItem('streampulse_xtream_server') === 'https://freqdns.com') {
+            localStorage.setItem('streampulse_xtream_server', 'http://freqdns.com');
+          }
+          const customUrl = localStorage.getItem('streampulse_custom_iptv_url');
+          if (customUrl) {
+            let updated = customUrl;
+            if (updated.includes('https://freqdns.com')) {
+              updated = updated.replace('https://freqdns.com', 'http://freqdns.com');
+            }
+            if (updated.includes('&output=ts') && !updated.includes('&type=')) {
+              updated = updated.replace('&output=ts', '&type=m3u');
+            }
+            if (updated !== customUrl) {
+              localStorage.setItem('streampulse_custom_iptv_url', updated);
+            }
+          }
+        } catch (e) {
+          console.warn("Failed to migrate legacy IPTV protocol/format:", e);
+        }
+      })();
+
       // Local State Object
       const State = {
         activeSection: 'all', // 'all', 'movie', 'tv', 'mylist', 'collections', 'collection-detail'
         featuredItem: null,
         favorites: JSON.parse(localStorage.getItem('cs_favorites') || '[]'),
         watchHistory: JSON.parse(localStorage.getItem('cs_history') || '[]'),
+        
+        // Streaming configurations
+        defaultProvider: localStorage.getItem('streampulse_default_provider') || 'vidlink',
+        defaultPlayer: localStorage.getItem('streampulse_default_player') || 'internal',
+        activeStream: null,
+
+        // IPTV States
+        customIptvUrl: localStorage.getItem('streampulse_custom_iptv_url') || 
+                       (localStorage.getItem('streampulse_xtream_server')
+                         ? `${localStorage.getItem('streampulse_xtream_server').replace(/\/$/, '')}/get.php?username=${encodeURIComponent(localStorage.getItem('streampulse_xtream_user'))}&password=${encodeURIComponent(localStorage.getItem('streampulse_xtream_pass'))}&type=m3u`
+                         : 'http://freqdns.com/get.php?username=leroyharding%40gmail.com&password=hp82XEh&type=m3u'),
+        activeIptvChannels: [],
+        iptvCategories: [],
+        selectedIptvCategory: 'All',
+        iptvSearchQuery: '',
+        iptvPage: 1,
+        iptvPageSize: 100,
+        
+        // Xtream Codes IPTV States
+        xtreamServer: localStorage.getItem('streampulse_xtream_server') || 'http://freqdns.com',
+        xtreamUser: localStorage.getItem('streampulse_xtream_user') || 'leroyharding@gmail.com',
+        xtreamPass: localStorage.getItem('streampulse_xtream_pass') || 'hp82XEh',
+        
+        // Real-Debrid Settings
+        rdToken: localStorage.getItem('streampulse_rd_token') || '',
+        audioWarningEnabled: localStorage.getItem('streampulse_audio_warning') !== 'false',
         
         // Search configurations
         searchQuery: '',
@@ -913,9 +1423,47 @@
           iframe.addEventListener('load', hidePlayerLoader);
         }
 
+        // Bind HTML5 video playback and error hooks
+        const video = document.getElementById('player-video');
+        if (video) {
+          video.addEventListener('play', hidePlayerLoader);
+          video.addEventListener('playing', hidePlayerLoader);
+          video.addEventListener('loadedmetadata', hidePlayerLoader);
+          video.addEventListener('error', function(e) {
+            // Ignore errors if the video element is hidden, has no source, or the source is the page itself (empty reset)
+            const currentSrc = video.src || '';
+            const normalizedLocation = window.location.href.split('#')[0].split('?')[0];
+            const normalizedSrc = currentSrc.split('#')[0].split('?')[0];
+
+            if (video.classList.contains('hidden') || 
+                !currentSrc || 
+                normalizedSrc === normalizedLocation) {
+              return;
+            }
+
+            console.error("Video element playback error:", e);
+            showPlayerErrorUI("Failed to play direct stream. The format may be unsupported by your browser or the link has expired.");
+          });
+        }
+
+        // Initialize default Xtream Codes credentials if not set
+        if (!localStorage.getItem('streampulse_xtream_server')) {
+          localStorage.setItem('streampulse_xtream_server', 'http://freqdns.com');
+          localStorage.setItem('streampulse_xtream_user', 'leroyharding@gmail.com');
+          localStorage.setItem('streampulse_xtream_pass', 'hp82XEh');
+          
+          const generatedUrl = `http://freqdns.com/get.php?username=leroyharding%40gmail.com&password=hp82XEh&type=m3u`;
+          localStorage.setItem('streampulse_custom_iptv_url', generatedUrl);
+          State.customIptvUrl = generatedUrl;
+          State.xtreamServer = 'http://freqdns.com';
+          State.xtreamUser = 'leroyharding@gmail.com';
+          State.xtreamPass = 'hp82XEh';
+        }
+
         // Render initially persistent favorite components and histories
         renderContinueWatchingTrack();
         renderFavoritesTrack();
+        loadSettingsInputs();
 
         // Initialize Firestick TV remote D-pad navigation engine
         if (typeof TVRemoteNav !== 'undefined') {
@@ -967,7 +1515,12 @@
         const downloadBtn = document.getElementById('update-download-btn');
         downloadBtn.onclick = () => {
           if (updateInfo.url) {
-            window.open(updateInfo.url, '_system');
+            const AndroidBridge = window.LeeStreamTVBridge || window.LeePrimeBridge;
+            if (AndroidBridge && AndroidBridge.isAvailable && AndroidBridge.isAvailable()) {
+              AndroidBridge.downloadAndInstallAPK(updateInfo.url);
+            } else {
+              window.open(updateInfo.url, '_system');
+            }
           }
         };
 
@@ -1424,6 +1977,10 @@
         document.getElementById('list-section').classList.add('hidden');
         document.getElementById('collections-section').classList.add('hidden');
         document.getElementById('collection-detail-section').classList.add('hidden');
+        const iptvSec = document.getElementById('iptv-section');
+        if (iptvSec) iptvSec.classList.add('hidden');
+        const settingsSec = document.getElementById('settings-section');
+        if (settingsSec) settingsSec.classList.add('hidden');
 
         // Reset search field if switching away from search manually
         if (section !== 'search') {
@@ -1469,6 +2026,16 @@
           const navCol = document.getElementById('nav-collections');
           if (navCol) navCol.classList.add('text-zinc-100', 'font-bold');
           document.getElementById('collection-detail-section').classList.remove('hidden');
+        } else if (section === 'iptv') {
+          const navIptv = document.getElementById('nav-iptv');
+          if (navIptv) navIptv.classList.add('text-zinc-100', 'font-bold');
+          if (iptvSec) iptvSec.classList.remove('hidden');
+          initializeIptvPage();
+        } else if (section === 'settings') {
+          const navSettings = document.getElementById('nav-settings');
+          if (navSettings) navSettings.classList.add('text-zinc-100', 'font-bold');
+          if (settingsSec) settingsSec.classList.remove('hidden');
+          loadSettingsInputs();
         }
 
         // Sync hash for deep-linking & history tracking
@@ -1479,6 +2046,8 @@
           else if (section === 'mylist') location.hash = '#/mylist';
           else if (section === 'collections') location.hash = '#/collections';
           else if (section === 'collection-detail') location.hash = `#/collections/${State.activeCollectionId}`;
+          else if (section === 'iptv') location.hash = '#/livetv';
+          else if (section === 'settings') location.hash = '#/settings';
         }
 
         // Close menu
@@ -1500,6 +2069,10 @@
           changeSection('mylist', false);
         } else if (hash === '#/collections') {
           changeSection('collections', false);
+        } else if (hash === '#/livetv') {
+          changeSection('iptv', false);
+        } else if (hash === '#/settings') {
+          changeSection('settings', false);
         } else if (hash.startsWith('#/collections/')) {
           const id = hash.replace('#/collections/', '');
           State.activeCollectionId = id;
@@ -1511,17 +2084,63 @@
       window.addEventListener('hashchange', handleRouting);
 
       // RENDER COLLECTIONS GRID VIEW (1-3 responsive columns)
-      function renderCollectionsGrid() {
+      async function renderCollectionsGrid() {
         const grid = document.getElementById('collections-grid');
         if (!grid) return;
 
         grid.innerHTML = '';
+        
+        // 1. Render static collections first
         HYDRA_COLLECTIONS.forEach(col => {
-          const card = createCollectionCardElement(col);
-          grid.appendChild(card);
+          if (!col.id.startsWith('ntl:col:')) {
+            const card = createCollectionCardElement(col);
+            grid.appendChild(card);
+          }
         });
 
-        // Fetch real posters asynchronously
+        // 2. Fetch Vercel collections and append them dynamically
+        try {
+          const url = 'https://ntl-collections-en.vercel.app/catalog/series/ntl_collections_catalog.json';
+          const catalogData = await fetchWithProxy(url);
+          const vercelMetas = catalogData.metas || [];
+          
+          vercelMetas.forEach(meta => {
+            // Check if it already exists or if we should add it
+            let col = HYDRA_COLLECTIONS.find(c => c.id === meta.id);
+            if (!col) {
+              // Determine an emoji based on name
+              let emoji = '🍿';
+              const nameUpper = meta.name.toUpperCase();
+              if (nameUpper.includes('SPIDER-MAN')) emoji = '🕸️';
+              else if (nameUpper.includes('MATRIX')) emoji = '🕶️';
+              else if (nameUpper.includes('AVATAR')) emoji = '🧞';
+              else if (nameUpper.includes('STAR WARS')) emoji = '⚔️';
+              else if (nameUpper.includes('SCREAM')) emoji = '😱';
+              else if (nameUpper.includes('MORTAL KOMBAT')) emoji = '🐲';
+              else if (nameUpper.includes('MARIO')) emoji = '🍄';
+              else if (nameUpper.includes('CONAN')) emoji = '🔍';
+              else if (nameUpper.includes('MUMMY')) emoji = '🧟';
+              else if (nameUpper.includes('PREDATOR')) emoji = '👽';
+              
+              col = {
+                id: meta.id,
+                title: meta.name,
+                emoji: emoji,
+                type: 'vercel_collection',
+                posterUrl: meta.poster,
+                description: meta.description
+              };
+              HYDRA_COLLECTIONS.push(col);
+            }
+            
+            const card = createCollectionCardElement(col);
+            grid.appendChild(card);
+          });
+        } catch (e) {
+          console.warn("Could not load Vercel collections catalog:", e);
+        }
+
+        // Fetch real posters for static ones asynchronously
         fetchCollectionPosters();
 
         // Initialize icons for collections cards
@@ -1608,6 +2227,36 @@
         navigateToCollection(colId);
       }
 
+      async function openDetailModalByImdbId(imdbId) {
+        // Show indicator toast
+        const toast = document.createElement('div');
+        toast.className = 'fixed bottom-10 right-10 z-[200] bg-zinc-900 border border-zinc-800 text-white px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3 animate-bounce';
+        toast.innerHTML = `
+          <div class="w-4 h-4 rounded-full border-2 border-t-netflixRed border-white/20 animate-spin"></div>
+          <span class="text-xs font-bold">Resolving metadata from TMDB...</span>
+        `;
+        document.body.appendChild(toast);
+
+        try {
+          const data = await tmdbFetch(`/find/${imdbId}`, { external_source: 'imdb_id' });
+          const movie = data.movie_results && data.movie_results[0];
+          const tv = data.tv_results && data.tv_results[0];
+          
+          if (movie) {
+            openDetailModal(movie.id, 'movie');
+          } else if (tv) {
+            openDetailModal(tv.id, 'tv');
+          } else {
+            alert(`Could not find metadata on TMDB for IMDb ID: ${imdbId}`);
+          }
+        } catch (e) {
+          console.error("Error finding TMDB details by IMDb ID:", e);
+          alert("Failed to resolve metadata from TMDB.");
+        } finally {
+          toast.remove();
+        }
+      }
+
       // FETCH AND RENDER SPECIFIC COLLECTION DETAILS (POSTERS GRID)
       async function loadCollectionDetail(collectionId) {
         const col = HYDRA_COLLECTIONS.find(c => c.id === collectionId);
@@ -1629,6 +2278,74 @@
         loader.classList.remove('hidden');
 
         try {
+          // Handle Vercel Collections
+          if (collectionId.startsWith('ntl:col:')) {
+            const url = `https://ntl-collections-en.vercel.app/meta/series/${collectionId}.json`;
+            const data = await fetchWithProxy(url);
+            const meta = data.meta || {};
+            const videos = meta.videos || [];
+            
+            document.getElementById('collection-detail-title').innerText = meta.name || col.title;
+            document.getElementById('collection-detail-emoji').innerText = col.emoji || '🍿';
+            document.getElementById('collection-detail-count').innerText = `${videos.length} titles compiled`;
+            
+            videos.forEach(v => {
+              const cardDiv = document.createElement('div');
+              cardDiv.className = 'min-w-[150px] md:min-w-[185px] w-[150px] md:w-[185px] shrink-0 movie-card select-none group focus:outline-none';
+              cardDiv.id = `card-imdb-${v.id}`;
+              
+              const posterHTML = v.thumbnail 
+                ? `<img src="${v.thumbnail}" alt="${v.title}" loading="lazy" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">`
+                : `<div class="w-full h-full bg-zinc-800 flex flex-col items-center justify-center p-4 text-center select-none">
+                     <i data-lucide="film" class="w-8 h-8 text-zinc-600 mb-2"></i>
+                     <span class="text-xs font-bold text-zinc-400 line-clamp-2">${v.title}</span>
+                   </div>`;
+                   
+              const rating = '7.5'; 
+              const year = v.released ? v.released.substring(0, 4) : '----';
+              
+              cardDiv.innerHTML = `
+                <div onclick="openDetailModalByImdbId('${v.id}')" class="relative aspect-[2/3] rounded-lg overflow-hidden border border-zinc-800 group-hover:border-red-600 bg-zinc-900 shadow-md cursor-pointer transition-all duration-300">
+                  ${posterHTML}
+                  <!-- Overlay Info hover block -->
+                  <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="bg-red-600 text-white text-[8px] uppercase font-black px-1.5 py-0.5 rounded tracking-wide">
+                        IMDB
+                      </span>
+                      <span class="text-[10px] text-emerald-400 font-extrabold flex items-center gap-0.5 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                        ★ ${rating}
+                      </span>
+                    </div>
+                    <h4 class="text-xs font-bold text-white line-clamp-2">${v.title}</h4>
+                    <p class="text-[10px] text-zinc-400 mt-0.5">${year}</p>
+                  </div>
+                </div>
+                <!-- Sub text detail block -->
+                <div class="mt-2 text-left">
+                  <h5 class="text-xs font-bold text-zinc-300 line-clamp-1 group-hover:text-white transition-colors">${v.title}</h5>
+                  <div class="flex items-center gap-2 text-[10px] text-zinc-500 font-medium mt-0.5">
+                    <span>${year}</span>
+                    <span>•</span>
+                    <span class="text-emerald-500 font-bold">★ ${rating}</span>
+                  </div>
+                </div>
+              `;
+              grid.appendChild(cardDiv);
+            });
+            
+            // Focus D-pad
+            setTimeout(() => {
+              if (typeof TVRemoteNav !== 'undefined') {
+                const firstColItem = grid.querySelector('.movie-card');
+                if (firstColItem) TVRemoteNav.setFocus(firstColItem);
+              }
+            }, 150);
+            
+            lucide.createIcons();
+            return;
+          }
+
           let items = [];
           
           if (col.type === 'tmdb_collection') {
@@ -2131,11 +2848,15 @@
 
         // TV SPECIFIC SETUP (TABS SHELF AND DROPDOWN LOADING)
         const tabEpsHead = document.getElementById('tab-episodes-head');
+        const streamsTvSelector = document.getElementById('streams-tv-selector');
         if (mediaType === 'tv') {
           tabEpsHead.classList.remove('hidden');
+          if (streamsTvSelector) streamsTvSelector.classList.remove('hidden');
           setupTVSeasonsDropdown(details);
+          setTimeout(syncTVSelectors, 100);
         } else {
           tabEpsHead.classList.add('hidden');
+          if (streamsTvSelector) streamsTvSelector.classList.add('hidden');
         }
 
         // Force switch default tabs inside modal
@@ -2149,20 +2870,22 @@
         
         const tabCastH = document.getElementById('tab-cast-head');
         const tabEpsH = document.getElementById('tab-episodes-head');
+        const tabStreamsH = document.getElementById('tab-streams-head');
         const tabRecsH = document.getElementById('tab-recs-head');
 
         const contentCast = document.getElementById('tab-cast-content');
         const contentEps = document.getElementById('tab-episodes-content');
+        const contentStreams = document.getElementById('tab-streams-content');
         const contentRecs = document.getElementById('tab-recs-content');
 
         // Unactive styling
-        [tabCastH, tabEpsH, tabRecsH].forEach(t => {
+        [tabCastH, tabEpsH, tabStreamsH, tabRecsH].forEach(t => {
           if (t) {
             t.classList.remove('border-netflixRed', 'text-white');
             t.classList.add('border-transparent', 'text-zinc-400');
           }
         });
-        [contentCast, contentEps, contentRecs].forEach(c => {
+        [contentCast, contentEps, contentStreams, contentRecs].forEach(c => {
           if (c) c.classList.add('hidden');
         });
 
@@ -2175,10 +2898,29 @@
           tabEpsH.classList.add('border-netflixRed', 'text-white');
           tabEpsH.classList.remove('border-transparent', 'text-zinc-400');
           contentEps.classList.remove('hidden');
+        } else if (tabName === 'streams') {
+          if (tabStreamsH) {
+            tabStreamsH.classList.add('border-netflixRed', 'text-white');
+            tabStreamsH.classList.remove('border-transparent', 'text-zinc-400');
+          }
+          if (contentStreams) contentStreams.classList.remove('hidden');
+          setupStreamsTabDisplay();
         } else if (tabName === 'recs') {
           tabRecsH.classList.add('border-netflixRed', 'text-white');
           tabRecsH.classList.remove('border-transparent', 'text-zinc-400');
           contentRecs.classList.remove('hidden');
+        }
+      }
+
+      function triggerDirectScrapeFromButton() {
+        switchDetailTab('streams');
+        startScrapeStreams();
+        const detailModal = document.getElementById('detail-modal');
+        const streamsSection = document.getElementById('tab-streams-content');
+        if (detailModal && streamsSection) {
+          setTimeout(() => {
+            streamsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 150);
         }
       }
 
@@ -2234,6 +2976,7 @@
           document.getElementById('season-episode-count').innerText = `${episodes.length} Episode${episodes.length !== 1 ? 's' : ''} available`;
 
           populateEpisodesGrid(episodes, seasonNumber);
+          updateStreamsEpisodesDropdown();
         } catch (e) {
           console.error("TV Seasons list resolve fetch error.", e);
           grid.innerHTML = `<p class="text-zinc-500 text-sm py-8 text-center col-span-full">Failed to fetch episodes list for Season ${seasonNumber}.</p>`;
@@ -2500,28 +3243,51 @@
         try {
           const path = `/movie/${id}`;
           const data = await tmdbFetch(path, { append_to_response: 'external_ids' });
+          const imdbId = data.external_ids ? data.external_ids.imdb_id : null;
           
-          if (!data.external_ids || !data.external_ids.imdb_id) {
-            throw new Error("No external IMDB mapped identification ID code returned via network node databases.");
+          // Populate Active Stream Context
+          State.activeStream = {
+            id: id,
+            type: 'movie',
+            season: null,
+            episode: null,
+            title: data.title || data.original_title || 'Featured Cinema',
+            episodeName: '',
+            imdbId: imdbId
+          };
+
+          // Update selector availability based on IMDb ID presence
+          const select = document.getElementById('player-provider-select');
+          const imdbOption = select.querySelector('option[value="playimdb"]');
+          if (imdbId) {
+            imdbOption.disabled = false;
+            imdbOption.text = "PlayIMDb";
+          } else {
+            imdbOption.disabled = true;
+            imdbOption.text = "PlayIMDb (Unavailable - No IMDb ID)";
           }
 
-          const imdbId = data.external_ids.imdb_id;
-          const streamUrl = `https://www.playimdb.com/title/${imdbId}/`;
-          
+          // Choose provider (fallback to vidlink if playimdb is default but unavailable)
+          let activeProvider = State.defaultProvider;
+          if (activeProvider === 'playimdb' && !imdbId) {
+            activeProvider = 'vidlink';
+          }
+          select.value = activeProvider;
+
           // Setup title text
-          const title = data.title || data.original_title || 'Featured Cinema';
-          document.getElementById('player-title').innerText = title;
+          document.getElementById('player-title').innerText = State.activeStream.title;
           document.getElementById('player-subtitle').innerText = `Movies • Stream Engine`;
 
           // Inject Stream inside player IFrame
+          const streamUrl = resolveStreamUrl(activeProvider, State.activeStream);
           const iframe = document.getElementById('player-iframe');
           iframe.src = streamUrl;
 
           // Track in History
           logProgressToWatchHistory(data, 'movie');
         } catch (error) {
-          console.error("Playback fetch movie IMDb failed.", error);
-          showPlayerErrorUI("IMDb reference is missing for this movie inside TMDB. Live stream cannot be located.");
+          console.error("Playback fetch movie failed.", error);
+          showPlayerErrorUI("Failed to fetch movie details. Live stream cannot be loaded.");
         }
       }
 
@@ -2532,36 +3298,149 @@
         try {
           const path = `/tv/${id}`;
           const data = await tmdbFetch(path, { append_to_response: 'external_ids' });
+          const imdbId = data.external_ids ? data.external_ids.imdb_id : null;
 
-          if (!data.external_ids || !data.external_ids.imdb_id) {
-            throw new Error("Missing external serial reference mapping parameters inside TMDB databases.");
+          // Populate Active Stream Context
+          State.activeStream = {
+            id: id,
+            type: 'tv',
+            season: season,
+            episode: episode,
+            title: data.name || data.original_name || 'TV Series Showcase',
+            episodeName: epName || `Episode ${episode}`,
+            imdbId: imdbId
+          };
+
+          // Update selector availability based on IMDb ID presence
+          const select = document.getElementById('player-provider-select');
+          const imdbOption = select.querySelector('option[value="playimdb"]');
+          if (imdbId) {
+            imdbOption.disabled = false;
+            imdbOption.text = "PlayIMDb";
+          } else {
+            imdbOption.disabled = true;
+            imdbOption.text = "PlayIMDb (Unavailable - No IMDb ID)";
           }
 
-          const imdbId = data.external_ids.imdb_id;
-          const streamUrl = `https://www.playimdb.com/title/${imdbId}/${season}/${episode}`;
+          // Choose provider (fallback to vidlink if playimdb is default but unavailable)
+          let activeProvider = State.defaultProvider;
+          if (activeProvider === 'playimdb' && !imdbId) {
+            activeProvider = 'vidlink';
+          }
+          select.value = activeProvider;
 
-          const showTitle = data.name || data.original_name || 'TV Series Showcase';
+          const showTitle = State.activeStream.title;
           document.getElementById('player-title').innerText = `${showTitle} - S${season} Ep${episode}`;
           document.getElementById('player-subtitle').innerText = epName ? `Ep ${episode}: "${epName}"` : `Season ${season}, Episode ${episode}`;
 
+          // Inject Stream inside player IFrame
+          const streamUrl = resolveStreamUrl(activeProvider, State.activeStream);
           const iframe = document.getElementById('player-iframe');
           iframe.src = streamUrl;
 
           // Save tracking progress
           logProgressToWatchHistory(data, 'tv', season, episode, epName);
         } catch (error) {
-          console.error("TV Imdb stream ID mapping fetch issues", error);
-          showPlayerErrorUI("IMDb show reference was not returned in standard metadata requests. Stream resolving aborted.");
+          console.error("TV stream ID mapping fetch failed", error);
+          showPlayerErrorUI("Failed to fetch show details. Stream resolving aborted.");
         }
       }
 
       // C. YouTube Trailer Execution Trigger
       function playTrailer(youtubeKey, title) {
+        const AndroidBridge = window.LeeStreamTVBridge || window.LeePrimeBridge;
+        if (AndroidBridge && AndroidBridge.isAvailable && AndroidBridge.isAvailable()) {
+          AndroidBridge.openYoutubeTrailer(youtubeKey);
+          return;
+        }
+
         showVideoPlayerUI();
+        
+        // Hide server selector for trailers
+        const providerContainer = document.getElementById('player-provider-container');
+        if (providerContainer) {
+          providerContainer.classList.add('hidden');
+        }
+
         document.getElementById('player-title').innerText = title;
         document.getElementById('player-subtitle').innerText = 'Official Trailer';
         const iframe = document.getElementById('player-iframe');
         iframe.src = `https://www.youtube.com/embed/${youtubeKey}?autoplay=1`;
+      }
+
+      // D. Change Player Provider Handler
+      function changePlayerProvider(event) {
+        const provider = event ? event.target.value : State.defaultProvider;
+        State.defaultProvider = provider;
+        localStorage.setItem('streampulse_default_provider', provider);
+
+        if (!State.activeStream) return;
+
+        const streamUrl = resolveStreamUrl(provider, State.activeStream);
+        const iframe = document.getElementById('player-iframe');
+        const loader = document.getElementById('player-loader');
+        const err = document.getElementById('player-error');
+
+        if (!streamUrl) {
+          // If resolving failed (e.g., playimdb selected but no IMDb ID exists)
+          iframe.src = '';
+          iframe.classList.add('opacity-0');
+          loader.classList.add('hidden');
+          showPlayerErrorUI("This server (PlayIMDb) requires an IMDb ID which is missing for this title. Please select another Server from the menu above.");
+        } else {
+          err.classList.add('hidden');
+          loader.classList.remove('hidden');
+          
+          // Ensure player visibility is toggled (show iframe, hide/stop video)
+          iframe.classList.remove('hidden');
+          iframe.classList.add('opacity-0');
+          
+          const video = document.getElementById('player-video');
+          if (video) {
+            video.classList.add('hidden');
+            video.pause();
+            video.src = '';
+            if (video.load) video.load();
+          }
+          if (window.hlsInstance) {
+            window.hlsInstance.destroy();
+            window.hlsInstance = null;
+          }
+
+          iframe.src = streamUrl;
+        }
+      }
+
+      // E. Resolve Stream URL Helper
+      function resolveStreamUrl(provider, context) {
+        const { id, type, season, episode, imdbId } = context;
+        if (provider === 'playimdb') {
+          if (!imdbId) return null;
+          return type === 'movie' 
+            ? `https://www.playimdb.com/title/${imdbId}/`
+            : `https://www.playimdb.com/title/${imdbId}/${season}/${episode}`;
+        }
+        if (provider === 'vidlink') {
+          return type === 'movie'
+            ? `https://vidlink.pro/movie/${id}?primaryColor=E50914`
+            : `https://vidlink.pro/tv/${id}/${season}/${episode}?primaryColor=E50914`;
+        }
+        if (provider === 'videasy') {
+          return type === 'movie'
+            ? `https://player.videasy.net/movie/${id}`
+            : `https://player.videasy.net/tv/${id}/${season}/${episode}`;
+        }
+        if (provider === 'vsembed') {
+          return type === 'movie'
+            ? `https://vsembed.ru/embed/movie/${id}`
+            : `https://vsembed.ru/embed/tv/${id}/${season}/${episode}`;
+        }
+        if (provider === 'xpass') {
+          return type === 'movie'
+            ? `https://play.xpass.top/e/movie/${id}`
+            : `https://play.xpass.top/e/tv/${id}/${season}/${episode}`;
+        }
+        return null;
       }
 
       // UI OVERLAYS FOR STREAM INTERFACE
@@ -2574,11 +3453,43 @@
         modal.classList.remove('hidden');
         document.body.classList.add('overflow-hidden');
         
+        // Ensure server selector is shown for regular streams
+        const providerContainer = document.getElementById('player-provider-container');
+        if (providerContainer) {
+          providerContainer.classList.remove('hidden');
+        }
+
+        // Show/hide external player button based on Native Bridge presence
+        const AndroidBridge = window.LeeStreamTVBridge || window.LeePrimeBridge;
+        const extBtn = document.getElementById('player-external-launch-btn');
+        if (extBtn) {
+          if (AndroidBridge && AndroidBridge.isAvailable && AndroidBridge.isAvailable()) {
+            extBtn.classList.remove('hidden');
+          } else {
+            extBtn.classList.add('hidden');
+          }
+        }
+
         // Hide error & Reset iframe src to avoid flash of old media
         err.classList.add('hidden');
         loader.classList.remove('hidden');
+        
+        // Reset player visibility defaults (show iframe, hide/stop video)
+        iframe.classList.remove('hidden');
         iframe.src = '';
         iframe.classList.add('opacity-0');
+
+        const video = document.getElementById('player-video');
+        if (video) {
+          video.classList.add('hidden');
+          video.pause();
+          video.src = '';
+          if (video.load) video.load();
+        }
+        if (window.hlsInstance) {
+          window.hlsInstance.destroy();
+          window.hlsInstance = null;
+        }
 
         setTimeout(() => {
           modal.classList.remove('opacity-0');
@@ -2614,12 +3525,1261 @@
           modal.classList.add('hidden');
           iframe.src = ''; // Clear source to stop playback immediately
           
+          // Clear direct video source if any
+          const video = document.getElementById('player-video');
+          if (video) {
+            video.pause();
+            video.src = '';
+          }
+          if (window.hlsInstance) {
+            window.hlsInstance.destroy();
+            window.hlsInstance = null;
+          }
+
           // Only unlock body overflow lock if detail modal is NOT also open
           const detailOpen = !document.getElementById('detail-modal').classList.contains('hidden');
           if (!detailOpen) {
             document.body.classList.remove('overflow-hidden');
           }
         }, 300);
+      }
+
+      // ==========================================
+      // LEE STREAM TV SETTINGS, SCRAPER, AND IPTV ENGINE
+      // ==========================================
+
+      const DEFAULT_M3U_PLAYLIST = `#EXTM3U
+#EXTINF:-1 tvg-logo="https://upload.wikimedia.org/wikipedia/commons/e/e5/NASA_logo.svg" group-title="Science",NASA TV
+https://ntv1.nasatv.live/live/nasatv/playlist.m3u8
+#EXTINF:-1 tvg-logo="https://upload.wikimedia.org/wikipedia/commons/c/c5/Deutsche_Welle_logo.svg" group-title="News",DW News (English)
+https://dwamdstream102.akamaized.net/hls/live/2014104/dwstream102/index.m3u8
+#EXTINF:-1 tvg-logo="https://upload.wikimedia.org/wikipedia/commons/f/fe/France_24_logo.svg" group-title="News",France 24 (English)
+https://static.france24.com/live/F24_EN_LO_HLS/live_web.m3u8
+#EXTINF:-1 tvg-logo="https://upload.wikimedia.org/wikipedia/commons/0/02/Red_Bull_logo.svg" group-title="Sports",Red Bull TV
+https://redbulltv-live.secure.footprint.net/hls/live/507854/rbttv/master.m3u8
+#EXTINF:-1 tvg-logo="https://upload.wikimedia.org/wikipedia/commons/e/e5/Sky_News_logo_2018.svg" group-title="News",Sky News
+https://isg-sky-england.secure.footprint.net/hls/live/201202/skynews/master.m3u8`;
+
+      let rdPairInterval = null;
+
+      function loadSettingsInputs() {
+        const rdInput = document.getElementById('settings-rd-token');
+        if (rdInput) rdInput.value = State.rdToken;
+
+        const providerSelect = document.getElementById('settings-default-provider');
+        if (providerSelect) providerSelect.value = State.defaultProvider;
+
+        const playerSelect = document.getElementById('settings-default-player');
+        if (playerSelect) playerSelect.value = State.defaultPlayer;
+
+        const iptvInput = document.getElementById('settings-iptv-url');
+        if (iptvInput) iptvInput.value = State.customIptvUrl;
+
+        const xtreamServerInput = document.getElementById('settings-xtream-server');
+        if (xtreamServerInput) xtreamServerInput.value = State.xtreamServer;
+
+        const xtreamUserInput = document.getElementById('settings-xtream-user');
+        if (xtreamUserInput) xtreamUserInput.value = State.xtreamUser;
+
+        const xtreamPassInput = document.getElementById('settings-xtream-pass');
+        if (xtreamPassInput) xtreamPassInput.value = State.xtreamPass;
+
+        const audioCheck = document.getElementById('settings-audio-warning');
+        if (audioCheck) audioCheck.checked = State.audioWarningEnabled;
+
+        checkRDPairingStatus();
+      }
+
+      function saveAppSettings() {
+        const rdInput = document.getElementById('settings-rd-token');
+        const providerSelect = document.getElementById('settings-default-provider');
+        const playerSelect = document.getElementById('settings-default-player');
+        const iptvInput = document.getElementById('settings-iptv-url');
+        
+        const xtreamServerInput = document.getElementById('settings-xtream-server');
+        const xtreamUserInput = document.getElementById('settings-xtream-user');
+        const xtreamPassInput = document.getElementById('settings-xtream-pass');
+
+        const audioCheck = document.getElementById('settings-audio-warning');
+
+        State.rdToken = rdInput ? rdInput.value.trim() : '';
+        State.defaultProvider = providerSelect ? providerSelect.value : 'vidlink';
+        State.defaultPlayer = playerSelect ? playerSelect.value : 'internal';
+        State.customIptvUrl = iptvInput ? iptvInput.value.trim() : '';
+        State.audioWarningEnabled = audioCheck ? audioCheck.checked : true;
+
+        const xServer = xtreamServerInput ? xtreamServerInput.value.trim() : '';
+        const xUser = xtreamUserInput ? xtreamUserInput.value.trim() : '';
+        const xPass = xtreamPassInput ? xtreamPassInput.value.trim() : '';
+
+        State.xtreamServer = xServer;
+        State.xtreamUser = xUser;
+        State.xtreamPass = xPass;
+
+        localStorage.setItem('streampulse_rd_token', State.rdToken);
+        localStorage.setItem('streampulse_default_provider', State.defaultProvider);
+        localStorage.setItem('streampulse_default_player', State.defaultPlayer);
+        localStorage.setItem('streampulse_custom_iptv_url', State.customIptvUrl);
+        localStorage.setItem('streampulse_audio_warning', State.audioWarningEnabled);
+
+        if (xServer) localStorage.setItem('streampulse_xtream_server', xServer);
+        else localStorage.removeItem('streampulse_xtream_server');
+
+        if (xUser) localStorage.setItem('streampulse_xtream_user', xUser);
+        else localStorage.removeItem('streampulse_xtream_user');
+
+        if (xPass) localStorage.setItem('streampulse_xtream_pass', xPass);
+        else localStorage.removeItem('streampulse_xtream_pass');
+
+        if (xServer && xUser && xPass) {
+          const generatedUrl = `${xServer.replace(/\/$/, '')}/get.php?username=${encodeURIComponent(xUser)}&password=${encodeURIComponent(xPass)}&type=m3u`;
+          State.customIptvUrl = generatedUrl;
+          localStorage.setItem('streampulse_custom_iptv_url', generatedUrl);
+        }
+
+        alert("Settings saved successfully!");
+        changeSection('all');
+      }
+
+      function resetAppSettings() {
+        if (confirm("Are you sure you want to restore default application settings?")) {
+          State.rdToken = '';
+          State.defaultProvider = 'vidlink';
+          State.defaultPlayer = 'internal';
+          State.customIptvUrl = '';
+          State.audioWarningEnabled = true;
+
+          State.xtreamServer = '';
+          State.xtreamUser = '';
+          State.xtreamPass = '';
+
+          localStorage.removeItem('streampulse_rd_token');
+          localStorage.removeItem('streampulse_default_provider');
+          localStorage.removeItem('streampulse_default_player');
+          localStorage.removeItem('streampulse_custom_iptv_url');
+          localStorage.removeItem('streampulse_audio_warning');
+          
+          localStorage.removeItem('streampulse_xtream_server');
+          localStorage.removeItem('streampulse_xtream_user');
+          localStorage.removeItem('streampulse_xtream_pass');
+
+          localStorage.removeItem('streampulse_rd_access_token');
+          localStorage.removeItem('streampulse_rd_client_id');
+          localStorage.removeItem('streampulse_rd_client_secret');
+
+          const profileDiv = document.getElementById('rd-user-profile');
+          if (profileDiv) profileDiv.classList.add('hidden');
+          const statusText = document.getElementById('rd-oauth-status-text');
+          if (statusText) statusText.innerText = 'No paired account detected.';
+          const pairBtn = document.getElementById('rd-pair-btn');
+          if (pairBtn) pairBtn.classList.remove('hidden');
+
+          loadSettingsInputs();
+          alert("Defaults restored.");
+        }
+      }
+
+      function togglePasswordVisibility(inputId) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+        if (input.type === 'password') {
+          input.type = 'text';
+        } else {
+          input.type = 'password';
+        }
+      }
+
+      function getRDTokenLink() {
+        window.open('https://real-debrid.com/apitoken', '_system');
+      }
+
+      function clearCustomIPTVSetting() {
+        const iptvInput = document.getElementById('settings-iptv-url');
+        if (iptvInput) iptvInput.value = '';
+      }
+
+      // --- Real-Debrid OAuth Pairing Flow ---
+      async function startRDPairing() {
+        const btn = document.getElementById('rd-pair-btn');
+        const display = document.getElementById('rd-pairing-display');
+        const codeDisplay = document.getElementById('rd-device-code-display');
+        const timer = document.getElementById('rd-polling-timer');
+        const statusText = document.getElementById('rd-oauth-status-text');
+
+        btn.disabled = true;
+        btn.innerText = "Pairing...";
+        display.classList.remove('hidden');
+        codeDisplay.innerText = "LOADING";
+        timer.innerText = "Requesting code from Real-Debrid...";
+
+        try {
+          const response = await fetch('https://api.real-debrid.com/oauth/v2/device/code?client_id=CEZWNFZ6BSSMK', { method: 'POST' });
+          if (!response.ok) throw new Error("Real-Debrid API rejected device code request.");
+          const data = await response.json();
+          
+          const deviceCode = data.device_code;
+          const userCode = data.user_code;
+          const interval = (data.interval || 5) * 1000;
+          let expiresIn = data.expires_in || 300;
+
+          codeDisplay.innerText = userCode;
+          
+          if (rdPairInterval) clearInterval(rdPairInterval);
+
+          rdPairInterval = setInterval(async () => {
+            expiresIn -= interval / 1000;
+            if (expiresIn <= 0) {
+              clearInterval(rdPairInterval);
+              timer.innerText = "Code expired. Please try again.";
+              btn.disabled = false;
+              btn.innerText = "Pair My Device";
+              return;
+            }
+
+            timer.innerText = `Waiting for authorization (${Math.round(expiresIn)}s remaining)...`;
+
+            try {
+              const credsRes = await fetch(`https://api.real-debrid.com/oauth/v2/device/credentials?client_id=CEZWNFZ6BSSMK&code=${deviceCode}`);
+              if (credsRes.ok) {
+                const creds = await credsRes.json();
+                clearInterval(rdPairInterval);
+                timer.innerText = "Device authorized! Exchanging tokens...";
+                await exchangeRDCredentials(creds, deviceCode);
+              }
+            } catch (err) {
+              console.warn("Polling error:", err);
+            }
+          }, interval);
+
+        } catch (e) {
+          console.error("RD Pairing error:", e);
+          timer.innerText = "Failed to start pairing flow. Please enter token manually.";
+          btn.disabled = false;
+          btn.innerText = "Pair My Device";
+        }
+      }
+
+      async function exchangeRDCredentials(creds, deviceCode) {
+        const btn = document.getElementById('rd-pair-btn');
+        const display = document.getElementById('rd-pairing-display');
+        const timer = document.getElementById('rd-polling-timer');
+        
+        try {
+          const params = new URLSearchParams();
+          params.append('client_id', creds.client_id);
+          params.append('client_secret', creds.client_secret);
+          params.append('code', deviceCode);
+          params.append('grant_type', 'http://oauth.net/grant_type/device/1.0');
+
+          const tokenRes = await fetch('https://api.real-debrid.com/oauth/v2/token', {
+            method: 'POST',
+            body: params
+          });
+          
+          if (!tokenRes.ok) throw new Error("Failed to exchange tokens.");
+          const tokenData = await tokenRes.json();
+          
+          const accessToken = tokenData.access_token;
+          localStorage.setItem('streampulse_rd_access_token', accessToken);
+          localStorage.setItem('streampulse_rd_client_id', creds.client_id);
+          localStorage.setItem('streampulse_rd_client_secret', creds.client_secret);
+
+          timer.innerText = "Fetching user profile...";
+          await fetchRDUserProfile(accessToken);
+          
+          display.classList.add('hidden');
+          btn.classList.add('hidden');
+        } catch (e) {
+          console.error("Token exchange failed:", e);
+          timer.innerText = "Failed to finalize token exchange.";
+          btn.disabled = false;
+          btn.innerText = "Pair My Device";
+        }
+      }
+
+      async function fetchRDUserProfile(accessToken) {
+        try {
+          const profileRes = await fetch(`https://api.real-debrid.com/rest/1.0/user?auth_token=${accessToken}`);
+          if (!profileRes.ok) throw new Error("Failed to load user profile.");
+          const user = await profileRes.json();
+          
+          const statusText = document.getElementById('rd-oauth-status-text');
+          if (statusText) statusText.innerText = `Paired with ${user.username}`;
+          
+          const userNameEl = document.getElementById('rd-user-name');
+          if (userNameEl) userNameEl.innerText = user.username;
+          
+          const userSubEl = document.getElementById('rd-user-subscription');
+          if (userSubEl) userSubEl.innerText = user.type === 'premium' ? 'Premium Subscription Active' : 'Free Account';
+          
+          let expText = 'Lifetime';
+          if (user.expiration) {
+            const expDate = new Date(user.expiration);
+            expText = expDate.toLocaleDateString();
+          }
+          const userExpEl = document.getElementById('rd-user-expiration');
+          if (userExpEl) userExpEl.innerText = expText;
+          
+          const profileDiv = document.getElementById('rd-user-profile');
+          if (profileDiv) profileDiv.classList.remove('hidden');
+          
+          // Re-trigger lucide icons
+          lucide.createIcons();
+        } catch (e) {
+          console.error("Error fetching user profile:", e);
+        }
+      }
+
+      function checkRDPairingStatus() {
+        const accessToken = localStorage.getItem('streampulse_rd_access_token');
+        if (accessToken) {
+          const pairBtn = document.getElementById('rd-pair-btn');
+          if (pairBtn) pairBtn.classList.add('hidden');
+          fetchRDUserProfile(accessToken);
+        }
+      }
+
+      // --- IPTV Live TV Engine ---
+      async function fetchXtreamIptvData(server, username, password) {
+        const categoriesUrl = `${server.replace(/\/$/, '')}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_live_categories`;
+        const streamsUrl = `${server.replace(/\/$/, '')}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_live_streams`;
+
+        // Fetch categories
+        document.getElementById('iptv-loader-text').innerText = "Fetching categories...";
+        const categoriesJson = await fetchWithProxy(categoriesUrl);
+        const categoryMap = {};
+        if (Array.isArray(categoriesJson)) {
+          categoriesJson.forEach(cat => {
+            categoryMap[cat.category_id] = cat.category_name;
+          });
+        }
+
+        // Fetch streams
+        document.getElementById('iptv-loader-text').innerText = "Fetching live channels...";
+        const streamsJson = await fetchWithProxy(streamsUrl);
+        if (!Array.isArray(streamsJson)) {
+          throw new Error("Invalid streams response from Xtream API");
+        }
+
+        document.getElementById('iptv-loader-text').innerText = "Mapping channels...";
+        const cleanServer = server.replace(/\/$/, '');
+        const channels = streamsJson.map(stream => {
+          const streamId = stream.stream_id;
+          const streamUrl = `${cleanServer}/live/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${streamId}.ts`;
+          return {
+            name: stream.name || 'Unnamed Channel',
+            logo: stream.stream_icon || '',
+            category: categoryMap[stream.category_id] || 'General',
+            url: streamUrl
+          };
+        });
+
+        return { channels, categories: Object.values(categoryMap) };
+      }
+
+      async function initializeIptvPage() {
+        const playlistUrl = State.customIptvUrl;
+        const grid = document.getElementById('iptv-channels-grid');
+        const loader = document.getElementById('iptv-loader');
+        const empty = document.getElementById('iptv-empty-state');
+
+        grid.innerHTML = '';
+        empty.classList.add('hidden');
+        loader.classList.remove('hidden');
+
+        try {
+          let channels = [];
+          let categoryNames = new Set(['All']);
+
+          // If customIptvUrl is set and is NOT the generated Xtream Codes M3U URL, load as generic M3U playlist
+          const isXtreamUrl = !playlistUrl || (State.xtreamServer && playlistUrl.includes(State.xtreamServer) && playlistUrl.includes('/get.php?'));
+
+          if (!isXtreamUrl && playlistUrl) {
+            document.getElementById('iptv-loader-text').innerText = "Loading Custom Playlist...";
+            const m3uText = await fetchM3uPlaylist(playlistUrl);
+            channels = parseM3u(m3uText);
+            
+            channels.forEach(ch => {
+              if (ch.category) categoryNames.add(ch.category);
+            });
+            State.iptvCategories = Array.from(categoryNames);
+          } else {
+            // Xtream Codes API loading via JSON (much faster & preserves actual categories/logos)
+            const xServer = State.xtreamServer || 'http://freqdns.com';
+            const xUser = State.xtreamUser || 'leroyharding@gmail.com';
+            const xPass = State.xtreamPass || 'hp82XEh';
+            
+            const xtreamData = await fetchXtreamIptvData(xServer, xUser, xPass);
+            channels = xtreamData.channels;
+            
+            categoryNames = new Set(['All']);
+            channels.forEach(ch => {
+              if (ch.category) categoryNames.add(ch.category);
+            });
+            State.iptvCategories = Array.from(categoryNames);
+          }
+
+          State.activeIptvChannels = channels;
+          State.iptvPage = 1;
+
+          renderIptvCategories();
+          renderIptvChannels();
+        } catch (e) {
+          console.error("IPTV Load failure: ", e);
+          grid.innerHTML = '';
+          empty.classList.remove('hidden');
+          const desc = empty.querySelector('p');
+          if (desc) {
+            if (window.location.protocol === 'file:') {
+              desc.innerHTML = `Failed to load channels due to CORS restrictions when running locally via <code>file://</code>.<br/><br/>` +
+                `<strong>To resolve this:</strong><br/>` +
+                `1. Install a CORS-unblocking browser extension (e.g., "Allow CORS: Access-Control-Allow-Origin").<br/>` +
+                `2. Enable the extension and refresh this page.<br/><br/>` +
+                `Alternatively, run StreamPulse using a local development server (e.g., <code>npm run dev</code>).`;
+            } else {
+              desc.innerText = "Failed to load channels from Xtream Codes / M3U source. Please check your credentials in Settings.";
+            }
+          }
+        } finally {
+          loader.classList.add('hidden');
+        }
+      }
+
+      async function fetchM3uPlaylist(url) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) return await res.text();
+        } catch (e) {
+          console.warn("Direct fetch failed for M3U playlist, using proxy chain");
+        }
+
+        const proxies = [
+          (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+          (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+          (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`
+        ];
+
+        for (const proxyFn of proxies) {
+          try {
+            const proxyUrl = proxyFn(url);
+            const res = await fetch(proxyUrl);
+            if (res.ok) {
+              const text = await res.text();
+              try {
+                const obj = JSON.parse(text);
+                if (obj.contents) return obj.contents;
+              } catch(e) {
+                return text;
+              }
+            }
+          } catch (e) {
+            console.warn("M3U proxy chain attempt failed:", e);
+          }
+        }
+        throw new Error("All proxies failed to load M3U playlist.");
+      }
+
+      function parseM3u(text) {
+        const lines = text.split('\n');
+        const channels = [];
+        let currentInfo = null;
+
+        for (let line of lines) {
+          line = line.trim();
+          if (line.startsWith('#EXTINF:')) {
+            const logoMatch = line.match(/tvg-logo="([^"]+)"/);
+            const groupMatch = line.match(/group-title="([^"]+)"/);
+            const commaIndex = line.lastIndexOf(',');
+            const name = commaIndex > -1 ? line.substring(commaIndex + 1).trim() : 'Unnamed Channel';
+
+            currentInfo = {
+              name,
+              logo: logoMatch ? logoMatch[1] : '',
+              category: groupMatch ? groupMatch[1] : 'General',
+              url: ''
+            };
+          } else if (line.startsWith('http') && currentInfo) {
+            currentInfo.url = line;
+            channels.push(currentInfo);
+            currentInfo = null;
+          }
+        }
+
+        return channels;
+      }
+
+      function renderIptvCategories() {
+        const container = document.getElementById('iptv-categories');
+        if (!container) return;
+
+        container.innerHTML = '';
+        State.iptvCategories.forEach(cat => {
+          const btn = document.createElement('button');
+          const isActive = State.selectedIptvCategory === cat;
+          btn.className = `px-4 py-2 rounded-lg font-bold text-xs cursor-pointer select-none text-left shrink-0 transition-all ${
+            isActive
+              ? 'bg-netflixRed text-white shadow-md'
+              : 'bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800/80'
+          }`;
+          btn.innerText = cat;
+          btn.onclick = () => selectIptvCategory(cat);
+          container.appendChild(btn);
+        });
+      }
+
+      function selectIptvCategory(category) {
+        State.selectedIptvCategory = category;
+        State.iptvPage = 1;
+        renderIptvCategories();
+        renderIptvChannels();
+      }
+
+      function renderIptvChannels() {
+        const grid = document.getElementById('iptv-channels-grid');
+        const empty = document.getElementById('iptv-empty-state');
+        if (!grid) return;
+
+        grid.innerHTML = '';
+        
+        const filtered = State.activeIptvChannels.filter(ch => {
+          const matchCat = State.selectedIptvCategory === 'All' || ch.category === State.selectedIptvCategory;
+          const matchSearch = State.iptvSearchQuery === '' || ch.name.toUpperCase().includes(State.iptvSearchQuery.toUpperCase());
+          return matchCat && matchSearch;
+        });
+
+        const loadMoreCont = document.getElementById('iptv-load-more-container');
+
+        if (filtered.length === 0) {
+          empty.classList.remove('hidden');
+          if (loadMoreCont) loadMoreCont.classList.add('hidden');
+          return;
+        }
+
+        empty.classList.add('hidden');
+
+        // Paginate channel grid rendering to prevent page unresponsive freezes on massive playlists
+        const pageSize = State.iptvPageSize || 100;
+        const limit = State.iptvPage * pageSize;
+        const slice = filtered.slice(0, limit);
+
+        slice.forEach((ch, idx) => {
+          const card = document.createElement('div');
+          card.className = 'iptv-channel-card bg-zinc-900/40 border border-zinc-800 hover:border-red-600 rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 group select-none movie-card';
+          card.id = `iptv-channel-${idx}`;
+          card.setAttribute('onclick', `playIptvChannel('${ch.url.replace(/'/g, "\\'")}', '${ch.name.replace(/'/g, "\\'")}', '${ch.logo.replace(/'/g, "\\'")}')`);
+
+          let logoHtml = '';
+          if (ch.logo) {
+            logoHtml = `<img src="${ch.logo}" alt="${ch.name}" class="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300" onerror="this.src=''; this.className='hidden'; this.nextElementSibling.classList.remove('hidden');">`;
+          }
+          
+          card.innerHTML = `
+            <div class="w-16 h-16 rounded-xl bg-zinc-950 flex items-center justify-center overflow-hidden border border-zinc-800 mb-3 shadow-inner shrink-0 relative p-2">
+              ${logoHtml}
+              <div class="text-zinc-500 group-hover:text-netflixRed transition-colors ${ch.logo ? 'hidden' : ''}">
+                <i data-lucide="tv" class="w-8 h-8"></i>
+              </div>
+            </div>
+            <h4 class="text-xs font-bold text-zinc-300 group-hover:text-white line-clamp-2">${ch.name}</h4>
+            <span class="text-[9px] text-zinc-500 mt-1 uppercase tracking-wider">${ch.category}</span>
+          `;
+          grid.appendChild(card);
+        });
+
+        // Show/Hide Load More Button based on matching records remaining
+        if (loadMoreCont) {
+          if (filtered.length > limit) {
+            loadMoreCont.classList.remove('hidden');
+          } else {
+            loadMoreCont.classList.add('hidden');
+          }
+        }
+
+        lucide.createIcons();
+      }
+
+      function loadMoreIptvChannels() {
+        State.iptvPage++;
+        renderIptvChannels();
+      }
+
+      function handleIptvSearch(e) {
+        State.iptvSearchQuery = e.target.value.trim();
+        State.iptvPage = 1;
+        renderIptvChannels();
+      }
+
+      function toggleCustomM3UModal(show) {
+        const modal = document.getElementById('iptv-m3u-modal');
+        if (!modal) return;
+
+        const input = document.getElementById('iptv-m3u-input');
+        if (input) input.value = State.customIptvUrl;
+
+        const xtreamServer = document.getElementById('iptv-xtream-server');
+        if (xtreamServer) xtreamServer.value = State.xtreamServer;
+
+        const xtreamUser = document.getElementById('iptv-xtream-user');
+        if (xtreamUser) xtreamUser.value = State.xtreamUser;
+
+        const xtreamPass = document.getElementById('iptv-xtream-pass');
+        if (xtreamPass) xtreamPass.value = State.xtreamPass;
+
+        if (show) {
+          modal.classList.remove('hidden');
+          toggleIptvModalMode('xtream');
+          setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modal.querySelector('.glass-modal').classList.remove('scale-95');
+          }, 50);
+        } else {
+          modal.classList.add('opacity-0');
+          modal.querySelector('.glass-modal').classList.add('scale-95');
+          setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+        lucide.createIcons();
+      }
+
+      let currentIptvModalMode = 'm3u';
+      
+      function toggleIptvModalMode(mode) {
+        currentIptvModalMode = mode;
+        const m3uBtn = document.getElementById('iptv-mode-m3u-btn');
+        const xtreamBtn = document.getElementById('iptv-mode-xtream-btn');
+        const m3uForm = document.getElementById('iptv-form-m3u');
+        const xtreamForm = document.getElementById('iptv-form-xtream');
+
+        if (mode === 'm3u') {
+          m3uBtn.className = 'flex-1 text-center py-2 text-xs font-bold rounded-lg bg-netflixRed text-white transition-all cursor-pointer';
+          xtreamBtn.className = 'flex-1 text-center py-2 text-xs font-bold rounded-lg text-zinc-400 hover:text-white transition-all cursor-pointer';
+          m3uForm.classList.remove('hidden');
+          xtreamForm.classList.add('hidden');
+        } else {
+          xtreamBtn.className = 'flex-1 text-center py-2 text-xs font-bold rounded-lg bg-netflixRed text-white transition-all cursor-pointer';
+          m3uBtn.className = 'flex-1 text-center py-2 text-xs font-bold rounded-lg text-zinc-400 hover:text-white transition-all cursor-pointer';
+          xtreamForm.classList.remove('hidden');
+          m3uForm.classList.add('hidden');
+        }
+      }
+
+      async function executeIptvModalLoad() {
+        if (currentIptvModalMode === 'm3u') {
+          await loadCustomIptvPlaylist();
+        } else {
+          await loadXtreamIptvPlaylist();
+        }
+      }
+
+      async function loadCustomIptvPlaylist() {
+        const input = document.getElementById('iptv-m3u-input');
+        const url = input ? input.value.trim() : '';
+
+        if (!url) {
+          alert("Please enter a valid M3U playlist URL.");
+          return;
+        }
+
+        State.customIptvUrl = url;
+        localStorage.setItem('streampulse_custom_iptv_url', url);
+        toggleCustomM3UModal(false);
+        
+        await initializeIptvPage();
+      }
+
+      async function loadXtreamIptvPlaylist() {
+        const serverInput = document.getElementById('iptv-xtream-server');
+        const userInput = document.getElementById('iptv-xtream-user');
+        const passInput = document.getElementById('iptv-xtream-pass');
+
+        const server = serverInput ? serverInput.value.trim() : '';
+        const user = userInput ? userInput.value.trim() : '';
+        const pass = passInput ? passInput.value.trim() : '';
+
+        if (!server || !user || !pass) {
+          alert("Please fill in all Xtream Codes login fields.");
+          return;
+        }
+
+        let cleanServer = server;
+        if (cleanServer.includes('freqdns.com')) {
+          cleanServer = cleanServer.replace(/^https:/i, 'http:');
+        }
+        if (!cleanServer.startsWith('http')) {
+          cleanServer = 'http://' + cleanServer;
+        }
+        if (cleanServer.endsWith('/')) {
+          cleanServer = cleanServer.slice(0, -1);
+        }
+
+        State.xtreamServer = cleanServer;
+        State.xtreamUser = user;
+        State.xtreamPass = pass;
+        localStorage.setItem('streampulse_xtream_server', cleanServer);
+        localStorage.setItem('streampulse_xtream_user', user);
+        localStorage.setItem('streampulse_xtream_pass', pass);
+
+        const generatedUrl = `${cleanServer}/get.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&type=m3u`;
+        State.customIptvUrl = generatedUrl;
+        localStorage.setItem('streampulse_custom_iptv_url', generatedUrl);
+
+        toggleCustomM3UModal(false);
+        loadSettingsInputs();
+        await initializeIptvPage();
+      }
+
+      async function resetIptvDefaultPlaylist() {
+        if (confirm("Reset to default channels list?")) {
+          State.customIptvUrl = '';
+          localStorage.removeItem('streampulse_custom_iptv_url');
+          
+          State.xtreamServer = '';
+          State.xtreamUser = '';
+          State.xtreamPass = '';
+          localStorage.removeItem('streampulse_xtream_server');
+          localStorage.removeItem('streampulse_xtream_user');
+          localStorage.removeItem('streampulse_xtream_pass');
+
+          toggleCustomM3UModal(false);
+          loadSettingsInputs();
+          await initializeIptvPage();
+        }
+      }
+
+      async function verifyXtreamLogin(server, user, pass) {
+        let cleanServer = server.trim();
+        if (cleanServer.includes('freqdns.com')) {
+          cleanServer = cleanServer.replace(/^https:/i, 'http:');
+        }
+        if (!cleanServer.startsWith('http')) {
+          cleanServer = 'http://' + cleanServer;
+        }
+        if (cleanServer.endsWith('/')) {
+          cleanServer = cleanServer.slice(0, -1);
+        }
+
+        const verifyUrl = `${cleanServer}/player_api.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`;
+        
+        try {
+          const data = await fetchWithProxy(verifyUrl);
+          if (data && data.user_info) {
+            if (data.user_info.auth === 1) {
+              return {
+                success: true,
+                status: data.user_info.status || 'Active',
+                expDate: data.user_info.exp_date ? new Date(parseInt(data.user_info.exp_date) * 1000).toLocaleDateString() : 'Never'
+              };
+            }
+          }
+          return { success: false, error: "Invalid username or password." };
+        } catch (e) {
+          console.error("Xtream verification failed", e);
+          return { success: true, warning: "CORS limits/Network issue. Account details saved.", status: 'Unknown', expDate: 'Unknown' };
+        }
+      }
+
+      async function verifyAndLoadXtream() {
+        const serverInput = document.getElementById('settings-xtream-server');
+        const userInput = document.getElementById('settings-xtream-user');
+        const passInput = document.getElementById('settings-xtream-pass');
+        const statusDiv = document.getElementById('xtream-login-status');
+
+        const server = serverInput ? serverInput.value.trim() : '';
+        const user = userInput ? userInput.value.trim() : '';
+        const pass = passInput ? passInput.value.trim() : '';
+
+        if (!server || !user || !pass) {
+          alert("Please fill in all Xtream Codes login fields.");
+          return;
+        }
+
+        if (statusDiv) {
+          statusDiv.className = "text-[10px] text-yellow-500 font-bold";
+          statusDiv.innerText = "Verifying login details...";
+        }
+
+        const result = await verifyXtreamLogin(server, user, pass);
+
+        if (statusDiv) {
+          if (result.success) {
+            statusDiv.className = "text-[10px] text-emerald-400 font-bold";
+            let msg = `Login OK! Expiration: ${result.expDate}`;
+            if (result.warning) {
+              msg = `Login Details Saved (CORS Skipped Verification)`;
+            }
+            statusDiv.innerText = msg;
+
+            let cleanServer = server;
+            if (cleanServer.includes('freqdns.com')) cleanServer = cleanServer.replace(/^https:/i, 'http:');
+            if (!cleanServer.startsWith('http')) cleanServer = 'http://' + cleanServer;
+            if (cleanServer.endsWith('/')) cleanServer = cleanServer.slice(0, -1);
+
+            State.xtreamServer = cleanServer;
+            State.xtreamUser = user;
+            State.xtreamPass = pass;
+            localStorage.setItem('streampulse_xtream_server', cleanServer);
+            localStorage.setItem('streampulse_xtream_user', user);
+            localStorage.setItem('streampulse_xtream_pass', pass);
+
+            const generatedUrl = `${cleanServer}/get.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&type=m3u`;
+            State.customIptvUrl = generatedUrl;
+            localStorage.setItem('streampulse_custom_iptv_url', generatedUrl);
+            
+            const iptvUrlInput = document.getElementById('settings-iptv-url');
+            if (iptvUrlInput) iptvUrlInput.value = generatedUrl;
+          } else {
+            statusDiv.className = "text-[10px] text-red-500 font-bold";
+            statusDiv.innerText = `Auth Failed: ${result.error}`;
+          }
+        }
+      }
+
+      function playIptvChannel(url, name, logo) {
+        playDirectStream(url, name, "Live TV Channel");
+      }
+
+      // --- Stream Scraper Tab Engine ---
+      function setupStreamsTabDisplay() {
+        const startCont = document.getElementById('streams-start-container');
+        const list = document.getElementById('streams-list');
+        const err = document.getElementById('streams-error');
+        const loader = document.getElementById('streams-loader');
+
+        loader.classList.add('hidden');
+        err.classList.add('hidden');
+        list.classList.add('hidden');
+        startCont.classList.remove('hidden');
+      }
+
+      function syncTVSelectors() {
+        const streamsSeason = document.getElementById('streams-season-select');
+        const mainSeason = document.getElementById('season-select');
+        if (streamsSeason && mainSeason) {
+          streamsSeason.innerHTML = mainSeason.innerHTML;
+          streamsSeason.value = mainSeason.value;
+        }
+        updateStreamsEpisodesDropdown();
+      }
+
+      function updateStreamsEpisodesDropdown() {
+        const streamsEp = document.getElementById('streams-episode-select');
+        if (!streamsEp) return;
+        streamsEp.innerHTML = '';
+        
+        if (State.activeEpisodesList && State.activeEpisodesList.length > 0) {
+          State.activeEpisodesList.forEach(ep => {
+            const opt = document.createElement('option');
+            opt.value = ep.episode_number;
+            opt.innerText = `Episode ${ep.episode_number}: ${ep.name || 'Untitled'}`;
+            streamsEp.appendChild(opt);
+          });
+        } else {
+          streamsEp.innerHTML = `<option value="1">Episode 1</option>`;
+        }
+      }
+
+      function handleStreamsTVChange() {
+        const streamsSeason = document.getElementById('streams-season-select');
+        const streamsEp = document.getElementById('streams-episode-select');
+        const mainSeason = document.getElementById('season-select');
+
+        if (mainSeason && mainSeason.value !== streamsSeason.value) {
+          mainSeason.value = streamsSeason.value;
+          handleSeasonChange().then(() => {
+            updateStreamsEpisodesDropdown();
+            const list = document.getElementById('streams-list');
+            if (!list.classList.contains('hidden')) {
+              startScrapeStreams();
+            }
+          });
+        } else {
+          const list = document.getElementById('streams-list');
+          if (!list.classList.contains('hidden')) {
+            startScrapeStreams();
+          }
+        }
+      }
+
+      async function fetchWithProxy(url) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) return await res.json();
+        } catch (e) {
+          console.warn("Direct fetch failed, trying proxy chain: " + url);
+        }
+
+        const proxies = [
+          (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+          (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+          (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`
+        ];
+
+        for (const proxyFn of proxies) {
+          try {
+            const proxyUrl = proxyFn(url);
+            const res = await fetch(proxyUrl);
+            if (res.ok) {
+              const text = await res.text();
+              try {
+                return JSON.parse(text);
+              } catch(e) {
+                const obj = JSON.parse(text);
+                if (obj.contents) return JSON.parse(obj.contents);
+                throw e;
+              }
+            }
+          } catch (e) {
+            console.warn("Proxy failed:", e);
+          }
+        }
+        throw new Error("Failed to fetch stream resource through proxies.");
+      }
+
+      async function startScrapeStreams() {
+        const startCont = document.getElementById('streams-start-container');
+        const loader = document.getElementById('streams-loader');
+        const list = document.getElementById('streams-list');
+        const err = document.getElementById('streams-error');
+
+        startCont.classList.add('hidden');
+        err.classList.add('hidden');
+        list.classList.add('hidden');
+        loader.classList.remove('hidden');
+
+        const activeItem = State.activeItem;
+        if (!activeItem) {
+          showScrapeError("Active item metadata not found.");
+          return;
+        }
+
+        const imdbId = activeItem.external_ids ? activeItem.external_ids.imdb_id : null;
+        if (!imdbId) {
+          showScrapeError("Direct streams are unavailable: IMDb ID is missing in TMDB metadata.");
+          return;
+        }
+
+        const type = State.activeMediaType === 'tv' ? 'series' : 'movie';
+        let queryId = imdbId;
+        if (type === 'series') {
+          const seasonSelect = document.getElementById('streams-season-select');
+          const epSelect = document.getElementById('streams-episode-select');
+          const season = seasonSelect ? seasonSelect.value : 1;
+          const episode = epSelect ? epSelect.value : 1;
+          queryId = `${imdbId}:${season}:${episode}`;
+        }
+
+        let torrentioUrl = `https://torrentio.strem.fun/providers=yts,eztv,rarbg,1337x,thepiratebay,torrentgalaxy/stream/${type}/${queryId}.json`;
+        if (State.rdToken) {
+          torrentioUrl = `https://torrentio.strem.fun/providers=yts,eztv,rarbg,1337x,thepiratebay,torrentgalaxy|realdebrid=${State.rdToken}/stream/${type}/${queryId}.json`;
+        }
+        
+        const notorrentUrl = `https://addon.notorrent2.workers.dev/stream/${type}/${queryId}.json`;
+        const streamvixConfig = JSON.stringify({
+          tmdbApiKey: "",
+          mediaFlowProxyUrl: "",
+          mediaFlowProxyPassword: "",
+          animeunityEnabled: "on",
+          animesaturnEnabled: "on",
+          animeworldEnabled: "on"
+        });
+        const streamvixUrl = `https://streamvix.hayd.uk/${encodeURIComponent(streamvixConfig)}/stream/${type}/${queryId}.json`;
+        const hdhubUrl = `https://hdhub.thevolecitor.qzz.io/eyJ0b3Jib3giOiJ1bnNldCIsInF1YWxpdGllcyI6IjIxNjBwLDEwODBwLDcyMHAiLCJzb3J0IjoiZGVzYyJ9/stream/${type}/${queryId}.json`;
+
+        try {
+          const promises = [
+            fetchWithProxy(torrentioUrl).catch(e => { console.error("Torrentio fail:", e); return { streams: [] }; }),
+            fetchWithProxy(notorrentUrl).catch(e => { console.error("NoTorrent fail:", e); return { streams: [] }; }),
+            fetchWithProxy(streamvixUrl).catch(e => { console.error("StreamViX fail:", e); return { streams: [] }; }),
+            fetchWithProxy(hdhubUrl).catch(e => { console.error("HdHub fail:", e); return { streams: [] }; })
+          ];
+
+          const results = await Promise.all(promises);
+          const torrentioStreams = results[0]?.streams || [];
+          const notorrentStreams = results[1]?.streams || [];
+          const streamvixStreams = results[2]?.streams || [];
+          const hdhubStreams = results[3]?.streams || [];
+
+          const allStreams = [];
+          
+          torrentioStreams.forEach(s => {
+            allStreams.push({
+              source: 'Torrentio',
+              name: s.name || 'Torrentio Stream',
+              title: s.title || '',
+              url: s.url || '',
+              type: State.rdToken ? 'rd' : 'free'
+            });
+          });
+
+          notorrentStreams.forEach(s => {
+            allStreams.push({
+              source: 'NoTorrent',
+              name: s.name || 'NoTorrent HLS',
+              title: s.title || '',
+              url: s.url || '',
+              type: 'hd'
+            });
+          });
+
+          streamvixStreams.forEach(s => {
+            allStreams.push({
+              source: 'StreamViX',
+              name: s.name || 'StreamViX Stream',
+              title: s.title || '',
+              url: s.url || '',
+              type: 'hd'
+            });
+          });
+
+          hdhubStreams.forEach(s => {
+            allStreams.push({
+              source: 'HdHub',
+              name: s.name || 'HdHub Premium',
+              title: s.title || '',
+              url: s.url || '',
+              type: 'hd'
+            });
+          });
+
+          if (allStreams.length === 0) {
+            showScrapeError("No direct streams found for this query.");
+            return;
+          }
+
+          const processed = allStreams.map(s => {
+            const res = getResolution(s.title || s.name);
+            const audio = classifyAudio(s.title || s.name);
+            return {
+              ...s,
+              resolution: res,
+              audio: audio,
+              score: calculateStreamScore(s.type, res)
+            };
+          });
+
+          processed.sort((a, b) => b.score - a.score);
+          renderScrapedStreams(processed);
+        } catch (error) {
+          console.error("Scrape failed:", error);
+          showScrapeError("Failed to scrape streams from addons feed.");
+        } finally {
+          loader.classList.add('hidden');
+        }
+      }
+
+      function getResolution(title) {
+        const titleUpper = title.toUpperCase();
+        if (titleUpper.includes('2160P') || titleUpper.includes('4K')) return '4K';
+        if (titleUpper.includes('1080P')) return '1080p';
+        if (titleUpper.includes('720P')) return '720p';
+        return 'SD';
+      }
+
+      function classifyAudio(title) {
+        const hdCodecs = ['DTS', 'TrueHD', 'Atmos', 'AC3', 'AC-3', 'DDP', 'EAC3', 'E-AC-3', '5.1ch', '7.1ch', '5.1', '7.1'];
+        const titleUpper = title.toUpperCase();
+        
+        for (const codec of hdCodecs) {
+          if (titleUpper.includes(codec)) {
+            return {
+              type: 'hd',
+              label: '⚠️ HD Audio (Silent on Web)'
+            };
+          }
+        }
+        
+        return {
+          type: 'stereo',
+          label: '🔊 Browser Stereo'
+        };
+      }
+
+      function calculateStreamScore(type, resolution) {
+        let tScore = 0;
+        if (type === 'rd') tScore = 100;
+        else if (type === 'hd') tScore = 80;
+        else if (type === 'free') tScore = 50;
+
+        let rScore = 0;
+        if (resolution === '4K') rScore = 30;
+        else if (resolution === '1080p') rScore = 20;
+        else if (resolution === '720p') rScore = 10;
+
+        return tScore + rScore;
+      }
+
+      function showScrapeError(msg) {
+        const loader = document.getElementById('streams-loader');
+        const err = document.getElementById('streams-error');
+        const errMsg = document.getElementById('streams-error-msg');
+        
+        loader.classList.add('hidden');
+        err.classList.remove('hidden');
+        errMsg.innerText = msg;
+        lucide.createIcons();
+      }
+
+      function renderScrapedStreams(streams) {
+        const list = document.getElementById('streams-list');
+        list.innerHTML = '';
+        list.classList.remove('hidden');
+
+        streams.forEach(stream => {
+          const card = document.createElement('div');
+          card.className = 'scraped-stream-card p-4 bg-zinc-900/60 hover:bg-zinc-800 border border-zinc-800 hover:border-red-600 rounded-xl cursor-pointer transition-all duration-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 select-none';
+          
+          const playTitle = State.activeItem.title || State.activeItem.name;
+          let playSub = stream.resolution + ' • ' + stream.source;
+          if (State.activeMediaType === 'tv') {
+            const season = document.getElementById('streams-season-select').value;
+            const episode = document.getElementById('streams-episode-select').value;
+            playSub = `S${season} Ep${episode} • ` + playSub;
+          }
+          
+          card.setAttribute('onclick', `playDirectStream('${stream.url.replace(/'/g, "\\'")}', '${playTitle.replace(/'/g, "\\'")}', '${playSub}', '${stream.audio.type}')`);
+
+          let typeBadge = '';
+          if (stream.type === 'rd') {
+            typeBadge = `<span class="bg-emerald-600 text-white text-[8px] uppercase font-black px-1.5 py-0.5 rounded tracking-wide">RD Premium</span>`;
+          } else if (stream.type === 'hd') {
+            typeBadge = `<span class="bg-blue-600 text-white text-[8px] uppercase font-black px-1.5 py-0.5 rounded tracking-wide">Direct HLS</span>`;
+          } else {
+            typeBadge = `<span class="bg-zinc-700 text-zinc-300 text-[8px] uppercase font-black px-1.5 py-0.5 rounded tracking-wide">P2P Torrent</span>`;
+          }
+
+          const resBadge = `<span class="bg-red-600/10 border border-red-500/20 text-netflixRed text-[9px] font-extrabold px-1.5 py-0.5 rounded">${stream.resolution}</span>`;
+
+          const audioBadge = State.audioWarningEnabled && stream.audio.type === 'hd'
+            ? `<span class="bg-amber-600/10 border border-amber-500/20 text-amber-500 text-[9px] font-semibold px-1.5 py-0.5 rounded">${stream.audio.label}</span>`
+            : `<span class="bg-zinc-800 text-zinc-400 text-[9px] font-semibold px-1.5 py-0.5 rounded">${stream.audio.label}</span>`;
+
+          const nameClean = stream.title ? stream.title.split('\n')[0] : stream.name;
+
+          card.innerHTML = `
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap mb-1">
+                ${typeBadge}
+                ${resBadge}
+                ${audioBadge}
+              </div>
+              <h5 class="text-xs font-bold text-zinc-200 line-clamp-2">${nameClean}</h5>
+              <p class="text-[9px] text-zinc-500 mt-1">${stream.source}</p>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-netflixRed/15 text-netflixRed flex items-center justify-center shrink-0 border border-red-600/30 group-hover:scale-105 transition-transform">
+              <i data-lucide="play" class="w-5 h-5 fill-netflixRed"></i>
+            </div>
+          `;
+          list.appendChild(card);
+        });
+
+        lucide.createIcons();
+      }
+
+      function playDirectStream(url, title, sub, audioType = 'stereo') {
+        const AndroidBridge = window.LeeStreamTVBridge || window.LeePrimeBridge;
+        const playerType = State.defaultPlayer || 'internal';
+        
+        // Save current active stream URL for external launcher
+        State.activeStreamUrl = url;
+
+        // If audio type is HD and player is internal, show browser audio alert prompt
+        if (audioType === 'hd' && playerType === 'internal' && State.audioWarningEnabled) {
+          const proceed = confirm("This stream uses multi-channel HD audio (DTS/Atmos/AC3) which might be silent in web browsers. Would you like to play it anyway? (If sound is missing, please configure and use an External Player in Settings.)");
+          if (!proceed) return;
+        }
+
+        if (playerType !== 'internal' && AndroidBridge && AndroidBridge.isAvailable && AndroidBridge.isAvailable()) {
+          // Play via external player
+          if (playerType === 'vlc') {
+            AndroidBridge.playInVLC(url, title);
+          } else if (playerType === 'mx') {
+            AndroidBridge.playInMXPlayer(url, title);
+          } else if (playerType === 'just') {
+            AndroidBridge.playInJustPlayer(url, title);
+          } else {
+            AndroidBridge.playInDefaultPlayer(url, title);
+          }
+          return;
+        }
+
+        // Web player fallback:
+        showVideoPlayerUI();
+        
+        const providerContainer = document.getElementById('player-provider-container');
+        if (providerContainer) {
+          providerContainer.classList.add('hidden');
+        }
+
+        document.getElementById('player-title').innerText = title;
+        document.getElementById('player-subtitle').innerText = sub || 'Direct Link';
+
+        const video = document.getElementById('player-video');
+        const iframe = document.getElementById('player-iframe');
+        
+        iframe.classList.add('hidden');
+        iframe.src = '';
+        video.classList.remove('hidden');
+
+        if (Hls.isSupported() && (url.includes('.m3u8') || url.includes('m3u8') || url.includes('master.m3u8'))) {
+          if (window.hlsInstance) {
+            window.hlsInstance.destroy();
+          }
+          const hls = new Hls();
+          window.hlsInstance = hls;
+          hls.loadSource(url);
+          hls.attachMedia(video);
+          
+          hls.on(Hls.Events.MANIFEST_PARSED, function() {
+            hidePlayerLoader();
+            video.play();
+          });
+
+          hls.on(Hls.Events.ERROR, function(event, data) {
+            if (data.fatal) {
+              switch (data.type) {
+                case Hls.ErrorTypes.NETWORK_ERROR:
+                  console.warn("Hls network error, attempting recovery...");
+                  hls.startLoad();
+                  break;
+                case Hls.ErrorTypes.MEDIA_ERROR:
+                  console.warn("Hls media error, attempting recovery...");
+                  hls.recoverMediaError();
+                  break;
+                default:
+                  console.error("Fatal Hls error:", data);
+                  hls.destroy();
+                  showPlayerErrorUI("Fatal HLS playback error. The stream source is invalid or unreachable.");
+                  break;
+              }
+            }
+          });
+        } else {
+          video.src = url;
+          video.play();
+        }
+      }
+
+      function launchCurrentInExternalPlayer() {
+        const AndroidBridge = window.LeeStreamTVBridge || window.LeePrimeBridge;
+        if (!AndroidBridge || !AndroidBridge.isAvailable || !AndroidBridge.isAvailable()) return;
+        
+        if (State.activeStreamUrl) {
+          const title = document.getElementById('player-title').innerText || 'Streaming Active';
+          const playerType = State.defaultPlayer || 'vlc'; 
+          
+          if (playerType === 'vlc') {
+            AndroidBridge.playInVLC(State.activeStreamUrl, title);
+          } else if (playerType === 'mx') {
+            AndroidBridge.playInMXPlayer(State.activeStreamUrl, title);
+          } else if (playerType === 'just') {
+            AndroidBridge.playInJustPlayer(State.activeStreamUrl, title);
+          } else {
+            AndroidBridge.playInDefaultPlayer(State.activeStreamUrl, title);
+          }
+          
+          // Pause internal video player
+          const video = document.getElementById('player-video');
+          if (video) video.pause();
+        }
       }
 
 
@@ -2638,6 +4798,45 @@
           }
         });
       }
+
+      window.handleAndroidBackPress = function() {
+        const playerModal = document.getElementById('video-player-modal');
+        const detailModal = document.getElementById('detail-modal');
+        const m3uModal = document.getElementById('iptv-m3u-modal');
+        const updateModal = document.getElementById('update-modal');
+        
+        if (updateModal && !updateModal.classList.contains('hidden')) {
+          closeUpdateModal();
+          return true;
+        }
+
+        if (m3uModal && !m3uModal.classList.contains('hidden')) {
+          toggleCustomM3UModal(false);
+          return true;
+        }
+
+        if (playerModal && !playerModal.classList.contains('hidden')) {
+          closeVideoPlayer();
+          return true;
+        }
+
+        if (detailModal && !detailModal.classList.contains('hidden')) {
+          closeDetailModal();
+          return true;
+        }
+
+        if (State.activeSection === 'collection-detail') {
+          changeSection('collections');
+          return true;
+        }
+
+        if (State.activeSection !== 'all') {
+          changeSection('all');
+          return true;
+        }
+
+        return false;
+      };
 
       // ==========================================
       // TV REMOTE D-PAD NAVIGATION ENGINE (Firestick Optimized)
@@ -2668,12 +4867,30 @@
         getCurrentScopeSelectors() {
           const playerModal = document.getElementById('video-player-modal');
           const detailModal = document.getElementById('detail-modal');
+          const m3uModal = document.getElementById('iptv-m3u-modal');
+
+          // If custom M3U/Xtream loader modal is open
+          if (m3uModal && !m3uModal.classList.contains('hidden')) {
+            return [
+              '#iptv-m3u-modal button[onclick="toggleCustomM3UModal(false)"]',
+              '#iptv-mode-m3u-btn',
+              '#iptv-mode-xtream-btn',
+              '#iptv-m3u-input',
+              '#iptv-xtream-server',
+              '#iptv-xtream-user',
+              '#iptv-xtream-pass',
+              '#iptv-load-playlist-btn',
+              '#iptv-m3u-modal button[onclick="resetIptvDefaultPlaylist()"]'
+            ];
+          }
 
           // If fullscreen video is active, limit navigation to player buttons only
           if (playerModal && !playerModal.classList.contains('hidden')) {
             return [
               '#video-player-modal button',
-              '#video-player-modal [onclick]'
+              '#video-player-modal [onclick]',
+              '#player-provider-select',
+              '#player-external-launch-btn'
             ];
           }
 
@@ -2684,13 +4901,65 @@
               '#detail-watch-btn',
               '#detail-trailer-btn:not(.hidden)',
               '#detail-bookmark-btn',
+              '#detail-scrape-btn',
               '#tab-episodes-head:not(.hidden)',
               '#tab-cast-head:not(.hidden)',
+              '#tab-streams-head:not(.hidden)',
               '#tab-recs-head:not(.hidden)',
               '#season-select',
               '.episode-item',
               '.rec-card',
-              '.cast-item'
+              '.cast-item',
+              '#scrape-streams-btn',
+              '.scraped-stream-card',
+              '#streams-season-select',
+              '#streams-episode-select'
+            ];
+          }
+
+          // Settings page active
+          if (State.activeSection === 'settings') {
+            return [
+              '#nav-all',
+              '#nav-movie',
+              '#nav-tv',
+              '#nav-collections',
+              '#nav-mylist',
+              '#nav-iptv',
+              '#nav-settings',
+              '#settings-rd-token',
+              '#settings-default-provider',
+              '#settings-default-player',
+              '#settings-audio-warning',
+              '#settings-iptv-url',
+              '#settings-xtream-server',
+              '#settings-xtream-user',
+              '#settings-xtream-pass',
+              '#save-settings-btn',
+              '#clear-settings-btn',
+              '#rd-pair-btn',
+              'button[onclick^="togglePasswordVisibility"]',
+              'button[onclick^="getRDTokenLink"]',
+              'button[onclick^="clearCustomIPTVSetting"]',
+              'button[onclick^="verifyAndLoadXtream"]'
+            ];
+          }
+
+          // IPTV page active
+          if (State.activeSection === 'iptv') {
+            return [
+              '#nav-all',
+              '#nav-movie',
+              '#nav-tv',
+              '#nav-collections',
+              '#nav-mylist',
+              '#nav-iptv',
+              '#nav-settings',
+              '#iptv-search-input',
+              'button[onclick^="toggleCustomM3UModal"]',
+              '#iptv-categories button',
+              '.iptv-channel-card',
+              '#iptv-load-more-btn'
             ];
           }
 
@@ -2701,6 +4970,8 @@
             '#nav-tv',
             '#nav-collections',
             '#nav-mylist',
+            '#nav-iptv',
+            '#nav-settings',
             '#search-input',
             '#clear-search-btn:not(.hidden)',
             '#hero-play-btn',
