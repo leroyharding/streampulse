@@ -1,5 +1,5 @@
 {
-  "version": "1.0.1",
-  "url": "https://github.com/leroyharding/streampulse/releases/download/v1.0.1/streampulse-1.0.1.apk",
-  "changelog": "Xtream Codes HTTP login protocol default, prioritized raw proxy fallbacks, direct JSON categories/streams API loaders, and paginated channel grid rendering."
+  "version": "1.0.2",
+  "url": "https://github.com/leroyharding/streampulse/releases/download/v1.0.2/streampulse-1.0.2.apk",
+  "changelog": "Native WebView Javascript interfaces (LeeStreamTVBridge & LeePrimeBridge) implemented in Android Java, enabling external video player (VLC, MX Player, Just Player) launches for raw MPEG-TS IPTV streams."
 }
