@@ -1528,6 +1528,9 @@
         setTimeout(() => {
           modal.classList.remove('opacity-0');
           modal.querySelector('.glass-modal').classList.remove('scale-95');
+          if (typeof TVRemoteNav !== 'undefined') {
+            TVRemoteNav.setFocus(downloadBtn);
+          }
         }, 50);
 
         lucide.createIcons();
@@ -1541,6 +1544,9 @@
         modal.querySelector('.glass-modal').classList.add('scale-95');
         setTimeout(() => {
           modal.classList.add('hidden');
+          if (typeof TVRemoteNav !== 'undefined') {
+            TVRemoteNav.setFocus(TVRemoteNav.getFallbackElement());
+          }
         }, 300);
       }
 
@@ -4881,9 +4887,18 @@ https://isg-sky-england.secure.footprint.net/hls/live/201202/skynews/master.m3u8
         },
 
         getCurrentScopeSelectors() {
+          const updateModal = document.getElementById('update-modal');
           const playerModal = document.getElementById('video-player-modal');
           const detailModal = document.getElementById('detail-modal');
           const m3uModal = document.getElementById('iptv-m3u-modal');
+
+          // If update modal is open
+          if (updateModal && !updateModal.classList.contains('hidden')) {
+            return [
+              '#update-download-btn',
+              '#update-modal button[onclick="closeUpdateModal()"]'
+            ];
+          }
 
           // If custom M3U/Xtream loader modal is open
           if (m3uModal && !m3uModal.classList.contains('hidden')) {
